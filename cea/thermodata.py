@@ -7,7 +7,7 @@ _THERMOINP = os.path.join('cea', 'data', 'thermo.inp')
 _Species = namedtuple('ChemicalSpecies',
 					  'name, comments, no_intervals, refcode,'
 					  'formula, phase, molwt, heat_formation,'
-					  'intervals'
+					  'intervals, ref_enthalpy, ref_temperature'
 					  )
 
 class ChemSpecies(_Species):
@@ -70,16 +70,24 @@ class ChemSpecies(_Species):
 		molwt = float(subheader[52:65].lstrip())
 		# Heat of formation is a decimal
 		heat_formation = float(subheader[65:80].lstrip())
-
-		# Split the per-interval records up and create a TempInterval
-		# object with each one, appending to the intervals list.
-		intervals = []
-		for records in (interval_data[i:i+3]
-						for i in xrange(0, no_intervals * 3, 3)):
-			intervals.append(TempInterval.from_records(records))
+		ref_enthalpy = None
+		ref_temperature = None
+		if no_intervals == 0:
+			ref_temperature = float(interval_data.strip())
+			heat_formation, ref_enthalpy = ref_enthalpy, heat_formation
+			intervals = None
+		else:
+			# Split the per-interval records up and create a 
+			# TempInterval object with each one, appending to the 
+			# intervals list.
+			intervals = []
+			for records in (interval_data[i:i+3]
+							for i in xrange(0, no_intervals * 3, 3)):
+				intervals.append(TempInterval.from_records(records))
 
 		return cls(name, comments, no_intervals, refcode, formula,
-				   phase, molwt, heat_formation, intervals)
+				   phase, molwt, heat_formation, intervals,
+				   ref_enthalpy, ref_temperature)
 
 _TempInterval = namedtuple('TempInterval', # type
 						   'bounds, exponents, offset, ncoeffs,'
