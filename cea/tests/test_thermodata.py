@@ -16,6 +16,12 @@ Ar                Ref-Elm. Moore,1971. Gordon,1999.
 """.strip()
 # Note that the D notation in Fortran denotes double-precision.
 
+condensed_species = """
+N2O4(L)           Dinitrogen tetroxide. McBride,1996 pp85,93.                   
+ 0 g 6/96 N   2.00O   4.00    0.00    0.00    0.00 1   92.0110000     -17549.000
+    298.150      0.0000  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0            0.000
+""".strip()
+
 expected_species_attributes = {
 		'name' : "Ar",
 		'comments' : "Ref-Elm. Moore,1971. Gordon,1999.",
@@ -23,8 +29,11 @@ expected_species_attributes = {
 		'refcode' : "g 3/98",
 		# TODO: Formula representation is in the works.
 		'formula' : [('AR', 1)],
+		'phase' : 0,
 		'molwt' : 39.9480000,
-		'heat_formation' : 0.000
+		'heat_formation' : 0.000,
+		'ref_enthalpy' : None,
+		'ref_temperature' : None
 		}
 
 expected_interval_properties = [
@@ -172,11 +181,64 @@ class TestChemSpecies(unittest.TestCase):
 	def test_formula(self):
 		self.cmpattr('formula')
 	
+	def test_phase(self):
+		self.cmpattr('phase')
+
 	def test_molwt(self):
 		self.cmpattr('molwt')
 	
 	def test_heat_formation(self):
 		self.cmpattr('heat_formation')
+
+	def test_ref_enthalpy(self):
+		self.cmpattr('ref_enthalpy')
+
+	def test_ref_temperature(self):
+		self.cmpattr('ref_temperature')
+
+class TestChemSpeciesCondensed(unittest.TestCase):
+	"""Test ChemSpecies processes a condensed species with a single
+	temperature datapoint.
+	
+	"""
+	def setUp(self):
+		records = condensed_species.split('\n')
+		self.species = ChemSpecies.from_records(records)
+
+	def test_name(self):
+		self.assertEqual(self.species.name, 'N2O4(L)')
+	
+	def test_comments(self):
+		self.assertEqual(self.species.comments, 
+						 'Dinitrogen tetroxide. McBride,1996 pp85,93.')
+	
+	def test_no_intervals(self):
+		self.assertEqual(self.species.no_intervals, 0)
+	
+	def test_refcode(self):
+		self.assertEqual(self.species.refcode, 'g 6/96')
+	
+	def test_formula(self):
+		self.assertEqual(self.species.formula, [('N', 2), ('O', 4)])
+	
+	def test_phase(self):
+		self.assertEqual(self.species.phase, 1)
+
+	def test_molwt(self):
+		self.assertEqual(self.species.molwt, 92.0110000)
+
+	def test_heat_formation(self):
+		self.assertEqual(self.species.heat_formation, None)
+
+	def test_ref_enthalpy(self):
+		self.assertEqual(self.species.ref_enthalpy, -17549.000)
+
+	def test_ref_temperature(self):
+		self.assertEqual(self.species.ref_temperature, 298.150)
+	
+	def test_intervals(self):
+		self.assertEqual(self.species.intervals, None)
+
 
 if __name__ == '__main__':
 	unittest.main()
