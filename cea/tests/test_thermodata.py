@@ -31,7 +31,7 @@ expected_interval_properties = [
 		{
 			'min' : 200.000,
 			'max' : 1000.000,
-			'no_exponents' : 7,
+			'ncoeffs' : 7,
 			'exponents' : (-2, -1, 0, 1, 2, 3, 4, 0),
 			'offset' : 6197.428,
 			'coefficients' : (
@@ -47,11 +47,12 @@ expected_interval_properties = [
 				-7.453750000e+02,
 				4.379674910e+00
 				),
+			'a8' : None,
 		},
 		{
 			'min' : 1000.000,
 			'max' : 6000.000,
-			'no_exponents' : 7,
+			'ncoeffs' : 7,
 			'exponents' : (-2, -1, 0, 1, 2, 3, 4, 0),
 			'offset' : 6197.428,
 			'coefficients' : (
@@ -67,11 +68,12 @@ expected_interval_properties = [
 				-7.449939610e+02,
 				4.379180110e+00
 				),
+			'a8' : None,
 		},
 		{
 			'min' : 6000.000,
 			'max' : 20000.000,
-			'no_exponents' : 7,
+			'ncoeffs' : 7,
 			'exponents' : (-2, -1, 0, 1, 2, 3, 4, 0),
 			'offset' : 6197.428,
 			'coefficients' : (
@@ -87,20 +89,64 @@ expected_interval_properties = [
 				-5.078300340e+06,
 				1.465298484e+03,
 				),
+			'a8' : None,
 		}]
 
 class TestTempInterval(unittest.TestCase):
 	def setUp(self):
 		self.records = sample_species.split('\n')[2:]
+		self.intervals = (
+				TempInterval.from_records(self.records[:3]),
+				TempInterval.from_records(self.records[3:6]),
+				TempInterval.from_records(self.records[6:9])
+				)
 	
-	def test_from_records(self):
-		intervals = [self.records[slice(*range_)]
-				for range_ in ((0, 3), (3, 6), (6, 9))]
-		objs = map(TempInterval.from_records, intervals)
-		print objs
-		for i, o in enumerate(objs):
-			for key, value in expected_interval_properties[i].items():
-				self.assertEqual(getattr(o, key), value)
+	def test___str_to_floats(self):
+		# Use the string starting '  2.010538475D+01-5.99...'
+		floats = TempInterval._str_to_floats(self.records[4])
+		self.assertItemsEqual(
+				floats,
+				expected_interval_properties[1]['coefficients'][:5]
+				)
+	
+	def test_bounds(self):
+		self.assertEqual(
+				self.intervals[1].bounds,
+				(1000.000, 6000.000)
+				)
+	
+	def test_min(self):
+		self.assertEqual(self.intervals[1].Tmin, 1000.000)
+	
+	def test_max(self):
+		self.assertEqual(self.intervals[1].Tmax, 6000.000)
+	
+	def test_ncoeffs(self):
+		self.assertEqual(self.intervals[1].ncoeffs, 7)
+	
+	def test_exponents(self):
+		self.assertEqual(
+				self.intervals[1].exponents,
+				expected_interval_properties[1]['exponents']
+				)
+	
+	def test_offset(self):
+		self.assertEqual(
+				self.intervals[1].offset,
+				expected_interval_properties[1]['offset']
+				)
+	
+	def test_coefficients(self):
+		self.assertItemsEqual(
+				self.intervals[1].coefficients,
+				expected_interval_properties[1]['coefficients']
+				)
+	
+	def test_constants(self):
+		self.assertItemsEqual(
+				self.intervals[1].constants,
+				expected_interval_properties[1]['constants']
+				)
 
 if __name__ == '__main__':
 	unittest.main()
