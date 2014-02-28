@@ -15,7 +15,37 @@ class ChemSpecies(_Species):
 
 	@classmethod
 	def from_records(cls, records):
-		"""Construct instance from relevant records in thermo.inp"""
+		"""Construct instance from relevant records in `thermo.inp`
+		
+		This constructor takes a sequence of records and returns an
+		instance of the ChemicalSpecies namedtuple.
+
+		Database Specification
+		----------------------
+
+		Chemical species data is contained in sets of 5-11 records
+		depending on the number of temperature intervals present. This
+		parses the first two (containing general species data) and
+		provides the remainder in 3-record sets to the TempInterval
+		class. The first two records contain the following:
+
+		 1. Name/formula
+		 	Comments/References
+		 2.	Number of temperature intervals in set
+		 	Optional identification code
+			Chemical formulas, symbols and numbers
+			Phase (0 for gas, nonzero for condensed phases)
+			Molecular weight
+			Heat of formation at 298.15 K in J/mol
+
+		For condensed species with data provided at only one
+		temperature, the Heat of formation is an assigned enthalpy
+		(equivalent at $T = 298.15 \text{K}$) and the number of
+		temperature intervals is 0. There is also no temperature range
+		provided, only the temperature for the assigned enthalpy.
+		
+		"""
+		
 		# Each set of records contains 3 subsets
 		independent_data, interval_data = records[:2], records[2:]
 
