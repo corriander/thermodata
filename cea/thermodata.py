@@ -4,26 +4,49 @@ from collections import namedtuple
 
 _THERMOINP = os.path.join('cea', 'data', 'thermo.inp')
 
-class ChemSpecies(object):
+_Species = namedtuple('ChemicalSpecies',
+					  'name, comments, no_intervals, refcode,'
+					  'formula, phase, molwt, heat_formation,'
+					  'intervals'
+					  )
 
-	# Figure out the best way to deal with these attributes
-	comments = None # Optional, raw values might be amenable to processing
-	refcode = None # Internal reference code, optional esp. without context
-	intervals = None # List of TempInterval objects...
-	no_intervals = None # Probably derive from intervals unless specified
-
+class ChemSpecies(_Species):
 	"""Chemical species with encapsulated thermodynamic data."""
-	def __init__(self, name, formula):
-		self.name = name # UID
-		self.formula = formula 	# Just the raw string for now
-								# It does make the chemical
-								# unambiguous though, so probably keep
-								# it as required.
 
 	@classmethod
 	def from_records(cls, records):
 		"""Construct instance from relevant records in thermo.inp"""
-		pass
+		# Each set of records contains 3 subsets
+		independent_data, interval_data = records[:2], records[2:]
+
+		# The first record is an identifier
+		header = independent_data[0]
+		name, comments = header[:18].rstrip(), header[18:].rstrip()
+
+		# Temperature independent attributes live in second record
+		subheader = independent_data[1]
+		# The number of intervals is an integer in set [1-3]
+		no_intervals = int(subheader[1])
+		# The refcode is an 8-char string
+		refcode = subheader[2:10].strip()
+		# The formula is a string of (element, integer) pairs
+		formula = subheader[10:51]
+		# The phase (0 for gas, non-zero for condensed) is an integer
+		phase = int(subheader[51:52])
+		# Molecular weight is a decimal
+		molwt = float(subheader[52:65].lstrip())
+		# Heat of formation is a decimal
+		heat_formation = float(subheader[65:80].lstrip())
+
+		# Split the per-interval records up and create a TempInterval
+		# object with each one, appending to the intervals list.
+		intervals = []
+		for records in (interval_data[i:i+3]
+						for i in xrange(0, no_intervals * 3, 3)):
+			intervals.append(TempInterval.from_records(records))
+
+		return cls(name, comments, no_intervals, refcode, formula,
+				   phase, molwt, heat_formation, intervals)
 
 _TempInterval = namedtuple('TempInterval', # type
 						   'bounds, exponents, offset, ncoeffs,'

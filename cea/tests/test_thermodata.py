@@ -1,5 +1,5 @@
 import unittest
-from ..thermodata import TempInterval
+from ..thermodata import TempInterval, ChemSpecies
 
 sample_species = """
 Ar                Ref-Elm. Moore,1971. Gordon,1999.                             
@@ -23,8 +23,8 @@ expected_species_attributes = {
 		'refcode' : "g 3/98",
 		# TODO: Formula representation is in the works.
 		'formula' : "AR  1.00    0.00    0.00    0.00    0.00 ",
-		'MW' : 39.9480000,
-		'H_f' : 0.000
+		'molwt' : 39.9480000,
+		'heat_formation' : 0.000
 		}
 
 expected_interval_properties = [
@@ -147,6 +147,36 @@ class TestTempInterval(unittest.TestCase):
 				self.intervals[1].constants,
 				expected_interval_properties[1]['constants']
 				)
+
+class TestChemSpecies(unittest.TestCase):
+	def setUp(self):
+		records = sample_species.split('\n')
+		self.species = ChemSpecies.from_records(records)
+		self.cmpattr = lambda a: self.assertEqual(
+				getattr(self.species, a),
+				expected_species_attributes[a]
+				)
+
+	def test_name(self):
+		self.cmpattr('name')
+
+	def test_comments(self):
+		self.cmpattr('comments')
+	
+	def test_no_intervals(self):
+		self.cmpattr('no_intervals')
+	
+	def test_refcode(self):
+		self.cmpattr('refcode')
+	
+	def test_formula(self):
+		self.cmpattr('formula')
+	
+	def test_molwt(self):
+		self.cmpattr('molwt')
+	
+	def test_heat_formation(self):
+		self.cmpattr('heat_formation')
 
 if __name__ == '__main__':
 	unittest.main()
