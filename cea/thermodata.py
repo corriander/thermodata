@@ -73,7 +73,7 @@ class ChemSpecies(_Species):
 		ref_enthalpy = None
 		ref_temperature = None
 		if no_intervals == 0:
-			ref_temperature = float(interval_data.strip())
+			ref_temperature = float(interval_data[0][:11].lstrip())
 			heat_formation, ref_enthalpy = ref_enthalpy, heat_formation
 			intervals = None
 		else:
