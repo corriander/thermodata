@@ -22,7 +22,7 @@ expected_species_attributes = {
 		'no_intervals' : 3,
 		'refcode' : "g 3/98",
 		# TODO: Formula representation is in the works.
-		'formula' : "AR  1.00    0.00    0.00    0.00    0.00 ",
+		'formula' : [('AR', 1)],
 		'molwt' : 39.9480000,
 		'heat_formation' : 0.000
 		}

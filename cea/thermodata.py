@@ -29,8 +29,11 @@ class ChemSpecies(_Species):
 		no_intervals = int(subheader[1])
 		# The refcode is an 8-char string
 		refcode = subheader[2:10].strip()
-		# The formula is a string of (element, integer) pairs
-		formula = subheader[10:51]
+		# The formula is a string of (element, integer) 8-char
+		string = subheader[10:51]
+		pairs = [string[i:i+8] for i in xrange(0, len(string), 8)]
+		formula = [(pair[:4].rstrip(), int(float(pair[4:])))
+				   for pair in pairs if pair[0] is not ' ']
 		# The phase (0 for gas, non-zero for condensed) is an integer
 		phase = int(subheader[51:52])
 		# Molecular weight is a decimal
