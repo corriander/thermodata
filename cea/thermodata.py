@@ -1,5 +1,6 @@
 import os
 import re
+import itertools
 from collections import namedtuple
 
 _THERMOINP = os.path.join('cea', 'data', 'thermo.inp')
@@ -25,29 +26,30 @@ class SpeciesDB(dict):
 		# Data format allows us to split by regex
 		pattern = re.compile(r'\n(?=[^-\s])')
 		products, reactants = map(pattern.split, split_dataset)
-
-		# TODO: extend algorithm to handle reactants separately
-		products.extend(reactants)
-		species_list = map(
-			lambda r: ChemSpecies.from_records(r.split('\n')),
-			products
-			)
-		for species in species_list:
+		
+		# This is a bit convoluted.
+		for records in itertools.chain(products, reactants):
+			if records in reactants:
+				is_product = False
+			else:
+				is_product = True
+			species = ChemSpecies.from_records(records.split('\n'),
+											   is_product)
 			instance[species.name] = species
-
 		return instance
 
 _Species = namedtuple('ChemicalSpecies',
 					  'name, comments, no_intervals, refcode,'
 					  'formula, phase, molwt, heat_formation,'
-					  'intervals, ref_enthalpy, ref_temperature'
+					  'intervals, ref_enthalpy, ref_temperature,'
+					  'is_product'
 					  )
 
 class ChemSpecies(_Species):
 	"""Chemical species with encapsulated thermodynamic data."""
 
 	@classmethod
-	def from_records(cls, records):
+	def from_records(cls, records, is_product=True):
 		"""Construct instance from relevant records in `thermo.inp`
 		
 		This constructor takes a sequence of records and returns an
@@ -120,7 +122,7 @@ class ChemSpecies(_Species):
 
 		return cls(name, comments, no_intervals, refcode, formula,
 				   phase, molwt, heat_formation, intervals,
-				   ref_enthalpy, ref_temperature)
+				   ref_enthalpy, ref_temperature, is_product)
 
 _TempInterval = namedtuple('TempInterval', # type
 						   'bounds, exponents, offset, ncoeffs,'
