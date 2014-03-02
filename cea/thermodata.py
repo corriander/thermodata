@@ -4,6 +4,39 @@ from collections import namedtuple
 
 _THERMOINP = os.path.join('cea', 'data', 'thermo.inp')
 
+class SpeciesDB(dict):
+	"""Database of chemical species derived from `thermo.inp`"""
+
+	@classmethod
+	def from_source(cls):
+
+		instance = cls()
+
+		with open(_THERMOINP, 'r') as f:
+			contents = f.read()
+
+		# Dataset starts with the reference species 'e-'
+		dataset = contents[re.search(r'(?<=\n)e-', contents).start():]
+
+		# Dataset split into reactants/products and reactants
+		# Delimited by END PRODUCTS and END REACTANTS (last line)
+		split_dataset = re.split(r'\nEND.*\n', dataset)[:-1]
+
+		# Data format allows us to split by regex
+		pattern = re.compile(r'\n(?=[^-\s])')
+		products, reactants = map(pattern.split, split_dataset)
+
+		# TODO: extend algorithm to handle reactants separately
+		products.extend(reactants)
+		species_list = map(
+			lambda r: ChemSpecies.from_records(r.split('\n')),
+			products
+			)
+		for species in species_list:
+			instance[species.name] = species
+
+		return instance
+
 _Species = namedtuple('ChemicalSpecies',
 					  'name, comments, no_intervals, refcode,'
 					  'formula, phase, molwt, heat_formation,'
