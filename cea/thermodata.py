@@ -2,8 +2,9 @@ import os
 import re
 import itertools
 from collections import namedtuple
+from collections import OrderedDict as odict
 
-class NASADataset(dict):
+class NASADataset(odict):
 	"""Thermodynamic data for 2074 species with dict-like access.
 
 	This is the full NASA Glenn Research Center dataset. This class
