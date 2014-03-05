@@ -3,17 +3,36 @@ import re
 import itertools
 from collections import namedtuple
 
-_THERMOINP = os.path.join('cea', 'data', 'thermo.inp')
+class NASADataset(dict):
+	"""Thermodynamic data for 2074 species with dict-like access.
 
-class SpeciesDB(dict):
-	"""Database of chemical species derived from `thermo.inp`"""
+	This is the full NASA Glenn Research Center dataset. This class
+	can be used as a more convenient interface to the database file
+	(in NASA's 9-coefficient format), or it could be used directly to
+	import chemical data into Python code.
+
+	This dataset may be generated from the accompanying database in
+	the NASA format (path is hardcoded).
+
+	"""
+	
+	_THERMOINP = os.path.join('cea', 'data', 'thermo.inp')
 
 	@classmethod
 	def from_source(cls):
+		"""Generate dataset from NASA database.
+
+		NASA distribute a thermodynamic database with the CEA program,
+		a copy of which is provided in this package, `thermo.inp` in
+		the `data` sub-directory. This alternative constructor parses
+		this database file and returns a "NASADataset" object with
+		its contents ("NASAChemical" instances).
+
+		"""
 
 		instance = cls()
 
-		with open(_THERMOINP, 'r') as f:
+		with open(cls._THERMOINP, 'r') as f:
 			contents = f.read()
 
 		# Dataset starts with the reference species 'e-'
@@ -33,63 +52,70 @@ class SpeciesDB(dict):
 				is_product = False
 			else:
 				is_product = True
-			species = ChemSpecies.from_records(records.split('\n'),
-											   is_product)
+			species = NASAChemical.from_records(records.split('\n'),
+											     is_product)
 			instance[species.name] = species
 		return instance
 
-_Species = namedtuple('ChemicalSpecies',
-					  'name, comments, no_intervals, refcode,'
-					  'formula, phase, molwt, heat_formation,'
-					  'intervals, ref_enthalpy, ref_temperature,'
-					  'is_product'
-					  )
+_NASAChemical = namedtuple('NASAChemical',
+					  	   'name, comments, no_intervals, refcode,'
+					  	   'formula, phase, molwt, heat_formation,'
+					  	   'intervals, ref_enthalpy, ref_temperature,'
+					  	   'is_product'
+					  	   )
 
-class ChemSpecies(_Species):
-	"""Chemical species with encapsulated thermodynamic data."""
+class NASAChemical(_NASAChemical):
+	"""Thermodynamic data for a chemical species.
+	
+	This data is derived from the NASA GRC 9-coefficient format
+	thermodynamic dataset distributed with CEA (Chemical Equilibrium
+	with Applications).
+	
+	"""
 
 	@classmethod
 	def from_records(cls, records, is_product=True):
-		"""Construct instance from relevant records in `thermo.inp`
+		"""Construct instance from relevant records in NASA database.
 		
-		This constructor takes a sequence of records and returns an
-		instance of the ChemicalSpecies namedtuple.
+		This constructor takes a sequence of records and returns a
+		"NASAChemical" instance.
 
-		Database Specification
-		----------------------
-
-		Chemical species data is contained in sets of 5-11 records
-		depending on the number of temperature intervals present. This
-		parses the first two (containing general species data) and
-		provides the remainder in 3-record sets to the TempInterval
-		class. The first two records contain the following:
-
-		 1. Name/formula
-		 	Comments/References
-		 2.	Number of temperature intervals in set
-		 	Optional identification code
-			Chemical formulas, symbols and numbers
-			Phase (0 for gas, nonzero for condensed phases)
-			Molecular weight
-			Heat of formation at 298.15 K in J/mol
-
-		For condensed species with data provided at only one
-		temperature, the Heat of formation is an assigned enthalpy
-		(equivalent at $T = 298.15 \text{K}$) and the number of
-		temperature intervals is 0. There is also no temperature range
-		provided, only the temperature for the assigned enthalpy.
-		
 		"""
+
+		# Database Specification
+		# ----------------------
+
+		# Chemical species data is contained in sets of 5-11 records
+		# depending on the number of temperature intervals present.
+		# This parses the first two (containing general species data)
+		# and provides the remainder in 3-record sets to the
+		# _NASAInterval class. The first two records contain the
+		# following:
+
+		#  1. Name/formula
+		#  	  Comments/References
+		#  2. Number of temperature intervals in set
+		#  	  Optional identification code
+		# 	  Chemical formulas, symbols and numbers
+		# 	  Phase (0 for gas, nonzero for condensed phases)
+		# 	  Molecular weight
+		# 	  Heat of formation at 298.15 K in J/mol
+
+		# For condensed species with data provided at only one
+		# temperature, the Heat of formation is an assigned enthalpy
+		# (equivalent at $T = 298.15 \text{K}$) and the number of
+		# temperature intervals is 0. There is also no temperature range
+		# provided, only the temperature for the assigned enthalpy.
 		
-		# Each set of records contains 3 subsets
-		independent_data, interval_data = records[:2], records[2:]
+		# Each set of records contains 2 subsets
+		headers, interval_data = records[:2], records[2:]
 
 		# The first record is an identifier
-		header = independent_data[0]
+		header = headers[0]
 		name, comments = header[:18].rstrip(), header[18:].rstrip()
 
 		# Temperature independent attributes live in second record
-		subheader = independent_data[1]
+		subheader = headers[1]
 		# The number of intervals is an integer in set [1-3]
 		no_intervals = int(subheader[1])
 		# The refcode is an 8-char string
@@ -113,29 +139,31 @@ class ChemSpecies(_Species):
 			intervals = None
 		else:
 			# Split the per-interval records up and create a 
-			# TempInterval object with each one, appending to the 
+			# _NASAInterval object with each one, appending to the 
 			# intervals list.
 			intervals = []
 			for records in (interval_data[i:i+3]
 							for i in xrange(0, no_intervals * 3, 3)):
-				intervals.append(TempInterval.from_records(records))
+				intervals.append(_NASAInterval.from_records(records))
 
 		return cls(name, comments, no_intervals, refcode, formula,
 				   phase, molwt, heat_formation, intervals,
 				   ref_enthalpy, ref_temperature, is_product)
 
-_TempInterval = namedtuple('TempInterval', # type
+_TempInterval = namedtuple('NASAInterval', # type
 						   'bounds, exponents, offset, ncoeffs,'
 						   'coefficients, constants, a8')
 
-class TempInterval(_TempInterval):
-	"""Temperature interval with $C_p/R$ polynomial description.
+class _NASAInterval(_TempInterval):
+	"""Poly coefficients for properties over temperature interval.
 	
-	This is a namedtuple (with modification) representation of a
-	temperature interval for a chemical species in the `thermo.inp`
-	thermodynamic database. The temperature interval is used for
-	curve-fitting purposes allowing evaluation of thermally perfect
-	chemical properties at specified temperatures.
+	NASA's 9-coefficient thermodynamic data format provides
+	coefficients for a polynomial describing variance in specific heat
+	capacity (and therefore enthalpy and entropy) over specified
+	temperature ranges.
+
+	This is a representation of that temperature interval and the
+	accompanying data.
 	
 	"""
 
@@ -149,28 +177,27 @@ class TempInterval(_TempInterval):
 
 	@classmethod
 	def from_records(cls, records):
-		"""Create a temperature interval from `thermo.inp` records
+		"""Create a temperature interval from database records."""
 
-		Database Specification
-		----------------------
-		
-		Interval data is split across three records:
-		
-		1.	Temperature range
-			Number of coefficients for $C_p / R$
-			$T$ exponents in empirical equation for $C_p / R$
-			${H(298.15) - H(0)}$ J/mol
-		2.	Coefficients $a_1 ... a_5$
-		3.	Coefficients $a_6, a_7, a_8$
-			Integration constants $b_1$ and $b_2$
+		# Database Specification
+		# ----------------------
+		# 
+		# Interval data is split across three records:
+		# 
+		# 1.	Temperature range
+		# 	Number of coefficients for $C_p / R$
+		# 	$T$ exponents in empirical equation for $C_p / R$
+		# 	${H(298.15) - H(0)}$ J/mol
+		# 2.	Coefficients $a_1 ... a_5$
+		# 3.	Coefficients $a_6, a_7, a_8$
+		# 	Integration constants $b_1$ and $b_2$
 
-		Note that here $H$ and $C_p$ refer to molar standard-state
-		enthalpy and pressure respectively, as defined in NASA-RP-1311
-		Part I, p45. The 8th coefficient, $a_8$, is not treated as a
-		coefficient as it's usually blank, or 0.0 if not.
+		# Note that here $H$ and $C_p$ refer to molar standard-state
+		# enthalpy and pressure respectively, as defined in
+		# NASA-RP-1311 Part I, p45. Despite being documented the 8th
+		# coefficient, $a_8$, is not used and therefore not treated as
+		# a coefficient here.
 		
-		"""
-
 		# Break first record down into constituent parts
 		header = records[0] # for clarity
 		# Bounds consist of two whitespace-separated decimals

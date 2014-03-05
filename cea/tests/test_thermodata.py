@@ -1,7 +1,8 @@
 import unittest
-from ..thermodata import TempInterval, ChemSpecies
+from ..thermodata import _NASAInterval as Interval
+from ..thermodata import NASAChemical as Chemical
 
-sample_species = """
+gaseous_sample = """
 Ar                Ref-Elm. Moore,1971. Gordon,1999.                             
  3 g 3/98 AR  1.00    0.00    0.00    0.00    0.00 0   39.9480000          0.000
     200.000   1000.0007 -2.0 -1.0  0.0  1.0  2.0  3.0  4.0  0.0         6197.428
@@ -16,7 +17,7 @@ Ar                Ref-Elm. Moore,1971. Gordon,1999.
 """.strip()
 # Note that the D notation in Fortran denotes double-precision.
 
-condensed_species = """
+condensed_sample = """
 N2O4(L)           Dinitrogen tetroxide. McBride,1996 pp85,93.                   
  0 g 6/96 N   2.00O   4.00    0.00    0.00    0.00 1   92.0110000     -17549.000
     298.150      0.0000  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0            0.000
@@ -101,18 +102,18 @@ expected_interval_properties = [
 			'a8' : None,
 		}]
 
-class TestTempInterval(unittest.TestCase):
+class TestInterval(unittest.TestCase):
 	def setUp(self):
-		self.records = sample_species.split('\n')[2:]
+		self.records = gaseous_sample.split('\n')[2:]
 		self.intervals = (
-				TempInterval.from_records(self.records[:3]),
-				TempInterval.from_records(self.records[3:6]),
-				TempInterval.from_records(self.records[6:9])
+				Interval.from_records(self.records[:3]),
+				Interval.from_records(self.records[3:6]),
+				Interval.from_records(self.records[6:9])
 				)
 	
 	def test___str_to_floats(self):
 		# Use the string starting '  2.010538475D+01-5.99...'
-		floats = TempInterval._str_to_floats(self.records[4])
+		floats = Interval._str_to_floats(self.records[4])
 		self.assertItemsEqual(
 				floats,
 				expected_interval_properties[1]['coefficients'][:5]
@@ -157,10 +158,10 @@ class TestTempInterval(unittest.TestCase):
 				expected_interval_properties[1]['constants']
 				)
 
-class TestChemSpecies(unittest.TestCase):
+class TestChemical(unittest.TestCase):
 	def setUp(self):
-		records = sample_species.split('\n')
-		self.species = ChemSpecies.from_records(records)
+		records = gaseous_sample.split('\n')
+		self.species = Chemical.from_records(records)
 		self.cmpattr = lambda a: self.assertEqual(
 				getattr(self.species, a),
 				expected_species_attributes[a]
@@ -196,14 +197,14 @@ class TestChemSpecies(unittest.TestCase):
 	def test_ref_temperature(self):
 		self.cmpattr('ref_temperature')
 
-class TestChemSpeciesCondensed(unittest.TestCase):
-	"""Test ChemSpecies processes a condensed species with a single
+class TestChemicalCondensed(unittest.TestCase):
+	"""Test Chemical processes a condensed species with a single
 	temperature datapoint.
 	
 	"""
 	def setUp(self):
-		records = condensed_species.split('\n')
-		self.species = ChemSpecies.from_records(records)
+		records = condensed_sample.split('\n')
+		self.species = Chemical.from_records(records)
 
 	def test_name(self):
 		self.assertEqual(self.species.name, 'N2O4(L)')
