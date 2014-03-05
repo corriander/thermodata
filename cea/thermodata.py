@@ -151,6 +151,31 @@ class NASAChemical(_NASAChemical):
 				   phase, molwt, heat_formation, intervals,
 				   ref_enthalpy, ref_temperature, is_product)
 
+	def __str__(self):
+
+		str_form = str_ref = ''
+		if self.heat_formation is None:
+			str_ref = 'Href ({:.2f}): {:.4e} J/mol'.format(
+					self.ref_temperature,
+					self.ref_enthalpy
+			)
+		else:
+			str_form = 'Hf (298.15 K)    : {0:.4e} J/mol'.format(
+					self.heat_formation)
+		
+		string = ['NASA chemical definition: {!s}'.format(self.name),
+				  '-------------------------',
+				  '{1!s}; {0!s}'.format(self.comments, self.refcode),
+				  'Phase {0!s}'.format(self.phase),
+				  'M                 : {0:.5g} g/mol'.format(self.molwt),
+				  '{!s}{!s}'.format(str_form, str_ref),
+				  ]
+		if not self.is_product:
+			string.append('REACTANT ONLY')
+		string.append('')
+
+		return '\n'.join(string)
+
 _TempInterval = namedtuple('NASAInterval', # type
 						   'bounds, exponents, offset, ncoeffs,'
 						   'coefficients, constants, a8')
