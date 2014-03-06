@@ -147,8 +147,9 @@ class NASAChemical(_NASAChemical):
 		# For condensed species with data provided at only one
 		# temperature, the Heat of formation is an assigned enthalpy
 		# (equivalent at $T = 298.15 \text{K}$) and the number of
-		# temperature intervals is 0. There is also no temperature range
-		# provided, only the temperature for the assigned enthalpy.
+		# temperature intervals is 0. There is also no temperature
+		# range provided, only the temperature for the assigned
+		# enthalpy.
 		
 		# Each set of records contains 2 subsets
 		headers, interval_data = records[:2], records[2:]
