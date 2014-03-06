@@ -157,6 +157,9 @@ class NASAChemical(_NASAChemical):
 		header = headers[0]
 		name, comments = header[:18].rstrip(), header[18:].rstrip()
 
+		# Remove the React. notation in comments, redundant
+		comments = comments.replace('React.', '').rstrip()
+
 		# Temperature independent attributes live in second record
 		subheader = headers[1]
 		# The number of intervals is an integer in set [1-3]
