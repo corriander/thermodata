@@ -29,7 +29,7 @@ def expand_refcode(code):
 		# Special case for C4
 		reference += '{!s}, {!s}'.format(reference, 
 										 references.get('t'))
-		return reference, '0000'
+		return '{!s}, 0000'.format(reference)
 
 	# Evaluate date
 	date_code = regex.search(code).group()
@@ -116,6 +116,13 @@ class NASAChemical(_NASAChemical):
 	
 	"""
 
+	@property
+	def notes(self):
+		"""Annotations, references."""
+		string = ['Comments        : {!s}'.format(self.comments)]
+		string.append(expand_refcode(self.refcode))
+		return '\n'.join(string)
+
 	@classmethod
 	def from_records(cls, records, is_product=True):
 		"""Construct instance from relevant records in NASA database.
@@ -160,6 +167,7 @@ class NASAChemical(_NASAChemical):
 
 		# Remove the React. notation in comments, redundant
 		comments = comments.replace('React.', '').rstrip()
+		if name == 'Air': comments = comments.replace('Reac', '')
 
 		# Temperature independent attributes live in second record
 		subheader = headers[1]
