@@ -183,7 +183,7 @@ class NASAChemical(_NASAChemical):
 		# The formula is a string of (element, integer) 8-char
 		string = subheader[10:51]
 		pairs = [string[i:i+8] for i in xrange(0, len(string), 8)]
-		formula = [(pair[:2].rstrip(), float(pair[2:]))
+		formula = [(pair[:2].rstrip().capitalize(), float(pair[2:]))
 				   for pair in pairs if pair[0] is not ' ']
 		# The phase (0 for gas, non-zero for condensed) is an integer
 		phase = int(subheader[51:52])
