@@ -168,6 +168,11 @@ class NASAChemical(_NASAChemical):
 		# Remove the React. notation in comments, redundant
 		comments = comments.replace('React.', '').rstrip()
 		if name == 'Air': comments = comments.replace('Reac', '')
+		# Replace upper-case L with lower-case unless denoting the
+		# elements La, Li, Lr, Lu, Lv (in practice only Lithium will
+		# be in here but making sure doesn't hurt). This gets cached
+		# by the way.
+		name = re.sub(r'L(?![airuv])', 'l', name)
 
 		# Temperature independent attributes live in second record
 		subheader = headers[1]

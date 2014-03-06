@@ -207,7 +207,7 @@ class TestChemicalCondensed(unittest.TestCase):
 		self.species = Chemical.from_records(records)
 
 	def test_name(self):
-		self.assertEqual(self.species.name, 'N2O4(L)')
+		self.assertEqual(self.species.name, 'N2O4(l)')
 	
 	def test_comments(self):
 		self.assertEqual(self.species.comments, 
