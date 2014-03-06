@@ -4,6 +4,48 @@ import itertools
 from collections import namedtuple
 from collections import OrderedDict as odict
 
+references = {
+	'g' : 'Glenn Research Center',
+	'j' : 'NIST-JANAF Thermochemical Tables. Chase,1998',
+	't' : ('Thermodynamic Properties of Individual '
+		   'Substances. Gurvich 1978, 1979, 1982, 1989, 1991, 1996'),
+	'n' : 'TRC Thermodynamic Tables, NIST',
+	'b' : 'Thermochemical Data of Pure Substances. Barin 1989',
+	'c' : 'CODATA Key Values for Thermodynamics. Cox 1989',
+	's' : 'Standard Reference Data: J.Phys.Chem.Ref.Data'
+	}
+
+def expand_refcode(code):
+	"""Return the expanded NASA GRC reference code as a string."""
+
+	expandmonth = ('', 'Jan', 'Feb', 'Mar', 'April', 'May', 'Jun', 
+				   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec')
+	expandyear = {'0' : '20'}
+	regex = re.compile(r'\d.*')
+
+	# Evaluate references
+	reference = references.get(code[0])
+	if code == 'g tpis':
+		# Special case for C4
+		reference += '{!s}, {!s}'.format(reference, 
+										 references.get('t'))
+		return reference, '0000'
+
+	# Evaluate date
+	date_code = regex.search(code).group()
+	date = []
+	try:
+		month, year = date_code.split('/')
+		date.extend((expandmonth[int(month)], '. '))
+	except ValueError:
+		year = date_code
+	date.extend((expandyear.get(year[0], '19'), year))
+
+	return 'Reference       : {!s}\nDate Calculated : {!s}'.format(
+			reference,
+			''.join(date)
+			)
+
 class NASADataset(odict):
 	"""Thermodynamic data for 2074 species with dict-like access.
 
