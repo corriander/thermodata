@@ -61,6 +61,11 @@ class NASADataset(odict):
 	
 	_THERMOINP = os.path.join('cea', 'data', 'thermo.inp')
 
+	def list(self):
+		"""List species in dataset."""
+		for name in tuple(self):
+			print name
+
 	@classmethod
 	def from_source(cls):
 		"""Generate dataset from NASA database.
