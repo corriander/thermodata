@@ -42,11 +42,11 @@ described here as floats.
 
 ### Record 1
 
-  -	Species name/formula (cols 1-15, 15str). This serves as
+  -	**Species name/formula (cols 1-15, 15str)**. This serves as
   	an ID. Note that 'l' is represented by `L` and condensed phases
 	designated as α, β, γ or δ are renamed *a*, *b*, *c* or *d* due to
 	ASCII limitations.
-  - Comments (cols 16-80, 65str). These include references in
+  - **Comments (cols 16-80, 65str)**. These include references in
     the format of author, year or page and date in the case of TRC
 	tables. When heat of formation is taken from a separate reference,
 	this is included as `Hf:<ref>`. Reference elements or species used
@@ -55,43 +55,43 @@ described here as floats.
 
 ### Record 2
 
-  - Number of temperature intervals (col 2, 2int).
-  - Reference-Date code (cols 4-9, 6str). This includes a
+  - **Number of temperature intervals (col 2, 2int)**.
+  - **Reference-Date code (cols 4-9, 6str)**. This includes a
     character indicating a general reference followed by a date (e.g.
 	`g` indicates that NASA Glenn was the source of significant work 
 	in deriving the data and `10/96` indicates the month/year).
-  - Chemical formula (cols 11-50, 2str + 6.2f). This is a set of 5 
+  - **Chemical formula (cols 11-50, 2str + 6.2f)**. This is a set of 5 
 	element/atom, number pairs. In the vast majority of cases the 
 	numbers are integers but in some cases they are non-integer, so 
 	floats are used.
-  - Phase (col 52, int). Zero for gas, nonzero for condensed phases.
-  - Molar mass (cols 53-65, 13.5f). Originally labelled molecular
+  - **Phase (col 52, int)**. Zero for gas, nonzero for condensed phases.
+  - **Molar mass (cols 53-65, 13.5f)**. Originally labelled molecular
     weight (in units g/mol).
-  - Heat of formation (cols 66-80, 13.5f). In the case of condensed
+  - **Heat of formation (cols 66-80, 13.5f)**. In the case of condensed
     species this is actually an assigned enthalpy (equivalent to the
 	heat of formation at 298.15 K). Units J/mol.
 
 ### Record 3
 
-  - Temperature range (cols 2-21, 2x 10.3f). The minimum and maximum
+  - **Temperature range (cols 2-21, 2x 10.3f)**. The minimum and maximum
     bounds for the current temperature interval. Units, K.
-  - Number of coefficients (col 23, int). This is always 7 in this
+  - **Number of coefficients (col 23, int)**. This is always 7 in this
     data (though the database format supports 8, see section
 	Redundancy).
-  - Polynomial exponents (cols 24-63, 8x 5.1f). These are always `[-2,
+  - **Polynomial exponents (cols 24-63, 8x 5.1f)**. These are always `[-2,
     -1, 0, 1, 2, 3, 4]` in this data.
-  - {H(298.15) - H(0)} (cols 66-80, 15.3f). This is the difference
+  - **{H(298.15) - H(0)} (cols 66-80, 15.3f)**. This is the difference
     between the heat of formation at the enthalpy at T = 0 K.
 
 ### Record 4
 
-  - Coefficients 1-5 (cols 1-80, 5x 16.8f).
+  - **Coefficients 1-5 (cols 1-80, 5x 16.8f)**.
 
 ### Record 5
 
-  - Coefficients 6-8 (cols 1-48, 3x 16.8f). The 8th is not used in
+  - **Coefficients 6-8 (cols 1-48, 3x 16.8f)**. The 8th is not used in
     this data (see section Redundancy).
-  - Integration constants (cols 49-80, 2x 16.8f). Used in evaluation
+  - **Integration constants (cols 49-80, 2x 16.8f)**. Used in evaluation
 	of enthalpy and temperature-dependent component of entropy,
 	respectively.
 
@@ -121,7 +121,7 @@ For chemical elements, the reference state is the stable state at
 standard-state pressure), the reference state is a gas over the entire
 temperature range. Condensed elements are treated as condensed over
 the temperature range with phase-transitions. These are identified by
-"Ref-elm" or "Ref-species" in the comments.
+`Ref-elm` or `Ref-species` in the comments.
 
 The universal gas constant is defined as *R* = 8.314510 J/mol/K.
 
