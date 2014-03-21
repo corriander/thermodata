@@ -16,16 +16,25 @@ references = {
 	}
 
 def read_thermoinp():
-	"""Read the NASA thermodynamic database into a string"""
+	"""Read the NASA thermodynamic database into tuple of strings
+	
+	Returns (gas_products, condensed_products, reactants)
+	
+	"""
 	path = os.path.join(os.path.dirname(__file__),
 					    'data',
 						'thermo.inp')
 	with open(path, 'r') as f: contents = f.read()
-	# Actual data starts with (reference) species 'e-' and the last
-	# line is END REACTANTS
-	match = re.search(r'(?<=\n)e-.*(?=\nEND REACTANTS)', contents)
-	return match.group()
-	
+	# Gaseous reactants/products begin with species 'e-'
+	# Condensed reactants/products begin with species 'Ag(cr)'
+	# Reactants begin with 'Air'
+	# We can catch all three categories in one go with a regex:
+	pattern = re.compile(r'\n(e-.*)'
+		 			      '\n(Ag\(cr\).*)'
+			   	    	  '\nEND PRODUCTS.*'
+			   		      '\n(Air.*)'
+			   		      '\nEND REACTANTS', re.DOTALL)
+	return pattern.search(contents).groups()
 
 def expand_refcode(code):
 	"""Return the expanded NASA GRC reference code as a string."""
@@ -90,7 +99,7 @@ class NASADataset(odict):
 
 		instance = cls()
 
-		dataset = read_thermoinp()
+		dataset = '\n'.join(read_thermoinp())
 		# Dataset split into reactants/products and reactants
 		# Delimited by END PRODUCTS and END REACTANTS (last line)
 		split_dataset = re.split(r'\nEND.*\n', dataset)[:-1]
