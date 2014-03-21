@@ -35,6 +35,9 @@ dataset.
 Design Specification
 --------------------
 
+The following is a loose design specification oriented around the two
+goals.
+
 ### Database Interface
 
 There are several components to this:
@@ -65,11 +68,19 @@ should be built in to provide confidence about this integrity.
 
 ### CEA Interface
 
-This is to be decided. The simplest implementation is a wrapper around
-the compiled executable. The next level is a source modification
-altering the requirements for preparing input files and parsing output
-files (e.g. reading from `STDIN` or `STDOUT`). Finally, a tight
-integration with Python might involve direct invocation of the FORTRAN
-subroutines, though this is somewhat new ground for me.
+Simply, the CEA interface needs to provide a mechanism for preparing
+input files, reading output files and calling the CEA program
+efficiently and cleanly.
+
+There are different ways in which the CEA program can be called:
+
+  - The simplest implementation is a wrapper around the compiled
+    executable.
+  - The next level is a source modification altering the requirements
+    for preparing input files and parsing output files (e.g.  reading
+	from `STDIN` or `STDOUT`).
+  - Finally, a tight integration with Python might involve direct
+    invocation of the FORTRAN subroutines, though this is somewhat new
+	ground for me.
 
 [CEA]: http://www.grc.nasa.gov/WWW/CEAWeb/index.htm
