@@ -15,6 +15,18 @@ references = {
 	's' : 'Standard Reference Data: J.Phys.Chem.Ref.Data'
 	}
 
+def read_thermoinp():
+	"""Read the NASA thermodynamic database into a string"""
+	path = os.path.join(os.path.dirname(__file__),
+					    'data',
+						'thermo.inp')
+	with open(path, 'r') as f: contents = f.read()
+	# Actual data starts with (reference) species 'e-' and the last
+	# line is END REACTANTS
+	match = re.search(r'(?<=\n)e-.*(?=\nEND REACTANTS)', contents)
+	return match.group()
+	
+
 def expand_refcode(code):
 	"""Return the expanded NASA GRC reference code as a string."""
 
