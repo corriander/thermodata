@@ -71,8 +71,6 @@ class NASADataset(odict):
 
 	"""
 	
-	_THERMOINP = os.path.join('cea', 'data', 'thermo.inp')
-
 	def list(self):
 		"""List species in dataset."""
 		for name in tuple(self):
@@ -92,12 +90,7 @@ class NASADataset(odict):
 
 		instance = cls()
 
-		with open(cls._THERMOINP, 'r') as f:
-			contents = f.read()
-
-		# Dataset starts with the reference species 'e-'
-		dataset = contents[re.search(r'(?<=\n)e-', contents).start():]
-
+		dataset = read_thermoinp()
 		# Dataset split into reactants/products and reactants
 		# Delimited by END PRODUCTS and END REACTANTS (last line)
 		split_dataset = re.split(r'\nEND.*\n', dataset)[:-1]
