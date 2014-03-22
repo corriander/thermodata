@@ -21,3 +21,30 @@ def read():
 			   		      '\n(Air.*)'
 			   		      '\nEND REACTANTS', re.DOTALL)
 	return pattern.search(contents).groups()
+
+def parse():
+	"""Return the database into a category-keyed dictionary.
+	
+	Categories are 'gas', 'condensed' and 'reactant' corresponding to
+	gaseous reactant/products, condensed reactant/products and
+	reactants (of any state) respectively.
+	
+	"""
+	db = dict.fromkeys(('gas', 'condensed', 'reactant'))
+	db['gas'], db['condensed'], db['reactant'] = read()
+	# For each category, separate into species then split into records
+	pattern = re.compile(r'\n(?=[eA-Z(])')
+	for category in db: 
+		# Convert the string in a per-species list of strings
+		db[category] = pattern.split(db[category])
+		for i, species in enumerate(db[category]):
+			# convert the species string into a list of records
+			species = species.split('\n') 
+			db[category][i] = species # TODO parse into a dict
+	return db
+
+
+
+
+
+		
