@@ -23,28 +23,18 @@ def read():
 	return pattern.search(contents).groups()
 
 def parse():
-	"""Return the database into a category-keyed dictionary.
+	"""Return the database as a category-keyed dictionary.
 	
 	Categories are 'gas', 'condensed' and 'reactant' corresponding to
 	gaseous reactant/products, condensed reactant/products and
-	reactants (of any state) respectively.
+	reactants (of any state) respectively. Each category is a list of
+	strings each corresponding to a chemical species dataset.
 	
 	"""
 	db = dict.fromkeys(('gas', 'condensed', 'reactant'))
 	db['gas'], db['condensed'], db['reactant'] = read()
-	# For each category, separate into species then split into records
+	# For each category, separate into per-species strings
 	pattern = re.compile(r'\n(?=[eA-Z(])')
 	for category in db: 
-		# Convert the string in a per-species list of strings
 		db[category] = pattern.split(db[category])
-		for i, species in enumerate(db[category]):
-			# convert the species string into a list of records
-			species = species.split('\n') 
-			db[category][i] = species # TODO parse into a dict
 	return db
-
-
-
-
-
-		
