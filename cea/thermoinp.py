@@ -1,3 +1,22 @@
+"""Interface for NASA Glenn thermodynamic database source file.
+
+This module provides low-level access to the original database format.
+The database is broadly split into three categories of chemical
+species; gaseous equilibrium products, condensed equilibrium products
+and reactants (e.g. 'Air' or other mixtures with characteristic
+properties).
+
+Several API functions are included to extract data from the source
+file at several levels of decomposition.
+
+  - `read_categories` and `read_species` provide category-keyed
+	dictionaries of raw strings and lists of per-species strings
+	respectively.
+  - `parse` is similar to `read_species` but instead parses the
+	per-species strings into a container with field attributes
+	(namedtuple).
+
+"""
 import re
 import os
 import collections
