@@ -5,17 +5,19 @@ import collections
 def read_categories():
 	"""Split the database into categories.
 	
-	Returns three strings (gaseous products/reactants, condensed
-	products/reactants and mixed-state reactants).
+	Returns a category-keyed dictionary of string values.
 
-		>>> gases, condensed, reactants = read_categories()
-		>>> type(gases)
-		<type 'str'>
+		>>> d = read_categories()
+		>>> sorted(d.keys())
+		['condensed_products', 'gas_products', 'reactants']
+		>>> type(d['reactants'])
+		str
 	
 	"""
 	path = os.path.join(os.path.dirname(__file__),
 					    'data',
 						'thermo.inp')
+	keys = 'gas_products', 'condensed_products', 'reactants'
 	with open(path, 'r') as f: contents = f.read()
 	# Gaseous reactants/products begin with species 'e-'
 	# Condensed reactants/products begin with species 'Ag(cr)'
@@ -26,38 +28,50 @@ def read_categories():
 			   	    	  '\nEND PRODUCTS.*'
 			   		      '\n(Air.*)'
 			   		      '\nEND REACTANTS', re.DOTALL)
-	return pattern.search(contents).groups()
+	return dict(zip(keys, pattern.search(contents).groups()))
 
 def read_species():
 	"""Split the database into categorised lists of species.
 	
-	Returns three lists (gaseous products/reactants, condensed
-	products/reactants and mixed-state reactants) containing
-	per-species strings.
+	Returns a category-keyed dictionary of species-separated content. 
+	Each category is a list of species dataset strings. The strings
+	contain newline-delimited records containing species-specific
+	data.
 
-		>>> gases, condensed, reactants = read_species()
-		>>> type(gases)
-		<type 'list'>
-		>>> type(gases[0])
-		<type 'str'>
+		>>> d = read_species()
+		>>> sorted(d.keys())
+		['condensed_products', 'gas_products', 'reactants']
+		>>> type(d['reactants'])
+		list
+		>>> type(d['reactants'][0])
+		str
 
 	"""
 	categories = read_categories()
 	# For each category, separate into per-species strings
 	pattern = re.compile(r'\n(?=[eA-Z(])')
-	return map(pattern.split, categories) 
+	return {k:pattern.split(v) for k, v in categories.items()}
 
 def parse():
 	"""Parse the database into categorised lists of Species instances.
 
-	Returns three lists (gaseous products/reactants, condensed
-	products/reactants and mixed-state reactants) containing Species 
+	Returns a category-keyed dictionary of lists containing Species
 	instances.
 
+		>>> d = parse()
+		>>> sorted(d.keys())
+		['condensed_products', 'gas_products', 'reactants']
+		>>> type(d['reactants'])
+		list
+		>>> sample_species = d['reactants'][0]
+		>>> sample_species.name
+		'Air'
+
 	"""
-	return [[_parse_species(item.split('\n')) for item in category]
-			for category in read_species()
-			]
+	species_categories = read_species()
+	return {k:[_parse_species(string.split('\n')) for string in lst]
+			for k, lst in species_categories.items()
+			}
 
 
 # --------------------------------------------------------------------
