@@ -72,10 +72,42 @@ class Interval(_Interval):
 
 	  `bounds`    : Interval bounds (Tmin, Tmax)
 	  `ncoeff`    : Number of coefficients/terms
-	  `exponents` : Exponent magnitudes
+	  `exponents` : Exponent magnitudes (len() == ncoeff)
+	  `deltah`    : Reference enthalpy value
 	  `coeff`     : Coefficients (len() == ncoeff)
 	  `const`     : Integration constants
-	  `deltah`    : Reference enthalpy value
 	
 	"""
 	pass
+
+def _double_array_to_float(string):
+	# Parse a string a containing 16-char Fortran-style doubles into
+	# a list of floats
+	float_strings = [string[i:i+16].replace('D','e') # Pythonify
+			  		 for i in xrange(0, len(string), 16)]
+	return map(float, float_strings)
+
+def _parse_Tinterval(records):
+	# Parse records containing a temperature interval/polynomial spec.
+	# This expects records as a list of strings and returns an
+	# Interval instance.
+	metadata, array1, array2 = records
+
+	# parse metadata string first
+	bounds = tuple(float(n) for n in metadata[:22].split())
+	ncoeffs = int(metadata[22])
+	exponents = tuple(float(s) for n in metadata[23:63].split())
+	deltah = float(metadata[65:])
+
+	# parse records containing numerical strings 
+	coeffs = _double_array_to_float(array1)
+	coeffs.extend(_double_array_to_float(array2[:32]))
+	coeffs = tuple(coeffs)
+	consts = tuple(_double_array_to_float(array2[48:]))
+
+	return Interval(bounds, 
+					ncoeffs,
+					exponents,
+					deltah,
+					coeffs,
+					consts)
