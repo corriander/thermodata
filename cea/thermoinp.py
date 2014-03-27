@@ -17,6 +17,7 @@ file at several levels of decomposition.
 	(namedtuple).
   - `lookup` can search the output of either `parse` or `read_species`
 	for species with a name matching a prefix.
+  - `list_species` provides simple categorised lists of species names.
 
 """
 import re
@@ -98,7 +99,9 @@ def lookup(prefix, form='parsed'):
 	"""Locate species with a matching name prefix.
 
 	This will search the database and return species datasets where
-	the name matches a prefix.
+	the name matches a prefix, returning the results in a
+	category-keyed dictionary of lists (no results in a category is
+	represented by None value).
 
 		>>> matches = lookup('N2')
 		>>> type(matches)
@@ -146,6 +149,14 @@ def lookup(prefix, form='parsed'):
 		if matches: results[category] = matches
 	return results
 
+def list_species():
+	"""List species in the database.
+
+	Returns a category-keyed dictionary of species names
+
+	"""
+	return {category:[species.name for species in species_list]
+		    for category, species_list in parse().items()}
 
 # --------------------------------------------------------------------
 #
