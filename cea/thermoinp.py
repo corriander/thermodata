@@ -114,7 +114,7 @@ def _parse_species(records):
 	refcode = body[2:10].strip()
 	# make the formula a bit more parse-friendly but leave as a string
 	formula = ' '.join([
-		'{!s}:{:3.2f}'.format(body[i:i+2], body[i+2:i+8].strip())
+		'{!s}:{!s}'.format(body[i:i+2], body[i+2:i+8].strip())
 		for i in xrange(10, 50, 8)
 		])
 	phase = int(body[51])
