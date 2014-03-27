@@ -1,5 +1,6 @@
 import re
 import os
+import collections
 
 def read_categories():
 	"""Split the database into categories.
@@ -46,6 +47,24 @@ def read_species():
 	pattern = re.compile(r'\n(?=[eA-Z(])')
 	return map(pattern.split, categories) 
 
+# --------------------------------------------------------------------
+#
+# Data structure for the 2002-spec species datasets
+#
+# --------------------------------------------------------------------
+
+_Species = collections.namedtuple('ChemicalSpecies',
+							      'name',
+							      'comments',
+							      'nintervals',
+							      'refcode',
+							      'formula',
+							      'phase',
+							      'molwt',
+								  'h_formation',
+								  'h_assigned',
+								  'T_reference',
+								  'intervals')
 
 # --------------------------------------------------------------------
 #
