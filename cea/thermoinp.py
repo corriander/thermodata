@@ -1,10 +1,15 @@
 import re
 import os
 
-def read():
-	"""Read the NASA thermodynamic database into tuple of strings.
+def read_categories():
+	"""Split the database into categories.
 	
-	Returns (gas_products, condensed_products, reactants)
+	Returns three strings (gaseous products/reactants, condensed
+	products/reactants and mixed-state reactants).
+
+		>>> gases, condensed, reactants = read_categories()
+		>>> type(gases)
+		<type 'str'>
 	
 	"""
 	path = os.path.join(os.path.dirname(__file__),
@@ -22,19 +27,21 @@ def read():
 			   		      '\nEND REACTANTS', re.DOTALL)
 	return pattern.search(contents).groups()
 
-def parse():
-	"""Return the database as a category-keyed dictionary.
+def read_species():
+	"""Split the database into categories and species.
 	
-	Categories are 'gas', 'condensed' and 'reactant' corresponding to
-	gaseous reactant/products, condensed reactant/products and
-	reactants (of any state) respectively. Each category is a list of
-	strings each corresponding to a chemical species dataset.
-	
+	Returns three lists (gaseous products/reactants, condensed
+	products/reactants and mixed-state reactants) containing
+	per-species strings.
+
+		>>> gases, condensed, reactants = read_species()
+		>>> type(gases)
+		<type 'list'>
+		>>> type(gases[0])
+		<type 'str'>
+
 	"""
-	db = dict.fromkeys(('gas', 'condensed', 'reactant'))
-	db['gas'], db['condensed'], db['reactant'] = read()
+	categories = read()
 	# For each category, separate into per-species strings
 	pattern = re.compile(r'\n(?=[eA-Z(])')
-	for category in db: 
-		db[category] = pattern.split(db[category])
-	return db
+	return map(pattern.split, categories) 
