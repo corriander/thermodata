@@ -29,7 +29,7 @@ def read_categories():
 	return pattern.search(contents).groups()
 
 def read_species():
-	"""Split the database into categories and species.
+	"""Split the database into categorised lists of species.
 	
 	Returns three lists (gaseous products/reactants, condensed
 	products/reactants and mixed-state reactants) containing
@@ -42,10 +42,23 @@ def read_species():
 		<type 'str'>
 
 	"""
-	categories = read()
+	categories = read_categories()
 	# For each category, separate into per-species strings
 	pattern = re.compile(r'\n(?=[eA-Z(])')
 	return map(pattern.split, categories) 
+
+def parse():
+	"""Parse the database into categorised lists of Species instances.
+
+	Returns three lists (gaseous products/reactants, condensed
+	products/reactants and mixed-state reactants) containing Species 
+	instances.
+
+	"""
+	return [[_parse_species(item.split('\n')) for item in category]
+			for category in read_species()
+			]
+
 
 # --------------------------------------------------------------------
 #
