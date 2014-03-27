@@ -85,6 +85,55 @@ class Species(_Species):
 	pass
 
 
+def _parse_species(records):
+	# Parse records containing species data.
+	# Returns a Species instance.
+
+	# split the records up
+	head, body, tail = records[0], records[1], records[2:]
+
+	# Parse the name & comments from the header 
+	name = head[:18].rstrip()
+	comments = head[18:].rstrip()
+
+	# Parse the non-polynomial data
+	nintervals = int(body[1])
+	refcode = body[2:10].strip()
+	# make the formula a bit more parse-friendly but leave as a string
+	formula = ' '.join([
+		'{!s}:{:3.2f}'.format(body[i:i+2], body[i+2:i+8].strip())
+		for i in xrange(10, 50, 8)
+		])
+	phase = int(body[51])
+	molwt = float(body[52:65])
+
+	# At this stage, the fields have the potential to vary depending
+	# on whether temperature intervals are present or not.
+	refenthalpy = float(body[65:])
+	if nintervals > 0:
+		h_assigned = T_reference = None
+		h_formation = refenthalpy
+		# each interval is described by three records
+		intervals = [_parse_interval(tail[i:i+3])
+					 for i in xrange(0, len(tail), 3)]
+	else:
+		h_formation = intervals = None
+		h_assigned = refenthalpy
+		T_reference = tail.split()[0] # grab the first word
+
+	return Species(name,
+				   comments,
+				   nintervals,
+				   refcode,
+				   formula,
+				   phase,
+				   molwt,
+				   h_formation,
+				   h_assigned,
+				   T_reference,
+				   intervals)
+
+
 # --------------------------------------------------------------------
 #
 # Data structure for the 2002-spec polynomial form (variable form
