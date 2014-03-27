@@ -32,7 +32,7 @@ def read_categories():
 		>>> sorted(d.keys())
 		['condensed_products', 'gas_products', 'reactants']
 		>>> type(d['reactants'])
-		str
+		<type 'str'>
 	
 	"""
 	path = os.path.join(os.path.dirname(__file__),
@@ -63,9 +63,9 @@ def read_species():
 		>>> sorted(d.keys())
 		['condensed_products', 'gas_products', 'reactants']
 		>>> type(d['reactants'])
-		list
+		<type 'list'>
 		>>> type(d['reactants'][0])
-		str
+		<type 'str'>
 
 	"""
 	categories = read_categories()
@@ -83,7 +83,7 @@ def parse():
 		>>> sorted(d.keys())
 		['condensed_products', 'gas_products', 'reactants']
 		>>> type(d['reactants'])
-		list
+		<type 'list'>
 		>>> sample_species = d['reactants'][0]
 		>>> sample_species.name
 		'Air'
@@ -102,7 +102,7 @@ def lookup(prefix, form='parsed'):
 
 		>>> matches = lookup('N2')
 		>>> type(matches)
-		dict
+		<type 'dict'>
 		>>> len(matches['reactants'])
 		3
 		>>> matches['reactants'][1].name
@@ -118,7 +118,7 @@ def lookup(prefix, form='parsed'):
 
 		>>> matches = lookup('N2')['reactants']
 		>>> type(matches)
-		list
+		<type 'list'>
 		>>> len(matches)
 		3
 
