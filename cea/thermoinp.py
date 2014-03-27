@@ -67,17 +67,17 @@ def parse():
 # --------------------------------------------------------------------
 
 _Species = collections.namedtuple('ChemicalSpecies',
-							      'name',
-							      'comments',
-							      'nintervals',
-							      'refcode',
-							      'formula',
-							      'phase',
-							      'molwt',
-								  'h_formation',
-								  'h_assigned',
-								  'T_reference',
-								  'intervals')
+							      ['name',
+							       'comments',
+							       'nintervals',
+							       'refcode',
+							       'formula',
+							       'phase',
+							       'molwt',
+								   'h_formation',
+								   'h_assigned',
+								   'T_reference',
+								   'intervals'])
 
 class Species(_Species):
 	"""Chemical species metadata and thermodynamic properties.
@@ -155,12 +155,12 @@ def _parse_species(records):
 # --------------------------------------------------------------------
 
 _Interval = collections.namedtuple('TemperatureInterval',
-								   'bounds',
-								   'ncoeff',
-								   'exponents',
-								   'deltah',
-								   'coeff',
-								   'const')
+								   ['bounds',
+								    'ncoeff',
+								    'exponents',
+								    'deltah',
+								    'coeff',
+								    'const'])
 
 
 class Interval(_Interval):
