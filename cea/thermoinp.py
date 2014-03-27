@@ -66,6 +66,25 @@ _Species = collections.namedtuple('ChemicalSpecies',
 								  'T_reference',
 								  'intervals')
 
+class Species(_Species):
+	"""Chemical species metadata and thermodynamic properties.
+
+    	`name` 		  : Species name/ID (usually formula)
+    	`comments`    : References and comments
+    	`nintervals`  : Number of temperature intervals (0-3)
+    	`refcode`     : Reference-date code
+    	`formula`     : String array of elements and no. atoms
+    	`phase`       : Condensed phases non-zero
+    	`molwt`       : molecular weight/molar mass, kg/kmol
+    	`h_formation` : heat/enthalpy of formation (nintervals > 0)
+    	`h_assigned`  : assigned enthalpy (nintervals == 0)
+		`T_reference` : reference temperature (for assigned enthalpy)
+		`intervals`   : temperature intervals (nintervals > 0)
+
+    """
+	pass
+
+
 # --------------------------------------------------------------------
 #
 # Data structure for the 2002-spec polynomial form (variable form
