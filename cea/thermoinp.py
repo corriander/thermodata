@@ -45,3 +45,37 @@ def read_species():
 	# For each category, separate into per-species strings
 	pattern = re.compile(r'\n(?=[eA-Z(])')
 	return map(pattern.split, categories) 
+
+
+# --------------------------------------------------------------------
+#
+# Data structure for the 2002-spec polynomial form (variable form
+# <=8-term poly with 2 integration constants)
+#
+# --------------------------------------------------------------------
+
+_Interval = collections.namedtuple('TemperatureInterval',
+								   'bounds',
+								   'ncoeff',
+								   'exponents',
+								   'deltah',
+								   'coeff',
+								   'const')
+
+
+class Interval(_Interval):
+	"""Specification of polynomial function of temperature.
+
+	This class of object stores data describing a variable form
+	polynomial function applicable to a defined temperature interval.
+	Fields correspond to the following data:
+
+	  `bounds`    : Interval bounds (Tmin, Tmax)
+	  `ncoeff`    : Number of coefficients/terms
+	  `exponents` : Exponent magnitudes
+	  `coeff`     : Coefficients (len() == ncoeff)
+	  `const`     : Integration constants
+	  `deltah`    : Reference enthalpy value
+	
+	"""
+	pass
