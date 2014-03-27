@@ -132,7 +132,7 @@ def _parse_species(records):
 	else:
 		h_formation = intervals = None
 		h_assigned = refenthalpy
-		T_reference = tail.split()[0] # grab the first word
+		T_reference = tail[0].split()[0] # grab the first word
 
 	return Species(name,
 				   comments,
@@ -187,7 +187,7 @@ def _double_array_to_float(string):
 			  		 for i in xrange(0, len(string), 16)]
 	return map(float, float_strings)
 
-def _parse_Tinterval(records):
+def _parse_interval(records):
 	# Parse records containing a temperature interval/polynomial spec.
 	# This expects records as a list of strings and returns an
 	# Interval instance.
@@ -196,7 +196,7 @@ def _parse_Tinterval(records):
 	# parse metadata string first
 	bounds = tuple(float(n) for n in metadata[:22].split())
 	ncoeffs = int(metadata[22])
-	exponents = tuple(float(s) for n in metadata[23:63].split())
+	exponents = tuple(float(n) for n in metadata[23:63].split())
 	deltah = float(metadata[65:])
 
 	# parse records containing numerical strings 
