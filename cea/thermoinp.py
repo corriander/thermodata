@@ -113,10 +113,11 @@ def _parse_species(records):
 	nintervals = int(body[1])
 	refcode = body[2:10].strip()
 	# make the formula a bit more parse-friendly but leave as a string
+	# e.g. 'C   1.00O  2.00   0.00   0.00   0.00' -> 'C:1.00 O:2.00'
 	formula = ' '.join([
-		'{!s}:{!s}'.format(body[i:i+2], body[i+2:i+8].strip())
+		'{!s}:{!s}'.format(body[i:i+2].strip(), body[i+2:i+8].strip())
 		for i in xrange(10, 50, 8)
-		])
+		]).replace(' :0.00', '')
 	phase = int(body[51])
 	molwt = float(body[52:65])
 
