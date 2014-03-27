@@ -15,6 +15,8 @@ file at several levels of decomposition.
   - `parse` is similar to `read_species` but instead parses the
 	per-species strings into a container with field attributes
 	(namedtuple).
+  - `lookup` can search the output of either `parse` or `read_species`
+	for species with a name matching a prefix.
 
 """
 import re
@@ -91,6 +93,58 @@ def parse():
 	return {k:[_parse_species(string.split('\n')) for string in lst]
 			for k, lst in species_categories.items()
 			}
+
+def lookup(prefix, form='parsed'):
+	"""Locate species with a matching name prefix.
+
+	This will search the database and return species datasets where
+	the name matches a prefix.
+
+		>>> matches = lookup('N2')
+		>>> type(matches)
+		dict
+		>>> len(matches['reactants'])
+		3
+		>>> matches['reactants'][1].name
+		'N2H4(L)'
+
+	Optionally, the search can return unprocessed species datasets:
+
+		>>> matches = lookup('N2', form='unparsed')
+		>>> matches['reactants'][1][:40] # limit sample string length
+		'N2H4(L)           Hydrazine.Hf:Gurvich,1'
+
+	The search can be category-restricted neatly using Python syntax:
+
+		>>> matches = lookup('N2')['reactants']
+		>>> type(matches)
+		list
+		>>> len(matches)
+		3
+
+	More advanced searching/browsing is outside the scope of this
+	module.
+
+	"""
+	if form == 'parsed':
+		source = parse()
+		def match(species):
+			if species.name.startswith(prefix): return True
+	elif form == 'unparsed':
+		source = read_species()
+		def match(species):
+			if species.startswith(prefix): return True
+	else:
+		raise ValueError("Argument form='{!s}' invalid".format(form))
+
+	results = dict.fromkeys(source)
+	for category in results:
+		matches = [species 
+				   for species in source[category]
+				   if match(species)
+				   ]
+		if matches: results[category] = matches
+	return results
 
 
 # --------------------------------------------------------------------
