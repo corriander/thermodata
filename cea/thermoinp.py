@@ -149,6 +149,74 @@ def lookup(prefix, form='parsed'):
 		if matches: results[category] = matches
 	return results
 
+
+def create_subset(prefix=None, category=None):
+	"""Syntactically valid subset filtered by search term or category.
+	
+	The prefix is passed to lookup() and exhibits the same behaviour.
+	For example, to create a subset containing the family of jet
+	fuels:
+
+		>>> string = create_subset('JP')
+
+	To create a subset of all gaseous products with names containing
+	the prefix 'N2':
+
+		>>> string = create_subset('N2', 'gas_products')
+
+	To output all reactant species:
+
+		>>> string = create_subset(category='reactants')
+	
+	"""
+
+	# Recreate the delimiters, these can be interleaved with
+	# categories. This is quicker than pulling them from the source
+	# and easier than passing this data around.
+	header = ['{:<80s}'.format('thermo')]
+	intervals = '    200.00   1000.00   6000.00  20000.     9/09/04'
+	header.append('{:<80s}'.format(intervals))
+	delimiters = ('\n'.join(header),
+				  '',
+				  '{:<80s}'.format('END PRODUCTS'),
+				  '{:<80s}'.format('END REACTANTS')
+				  )
+
+	# empty list for blocks of species, map category to an index
+	species = [None] * 3 # 3 categories of species, default empty str
+	index = {'gas_products' : 0,
+			 'condensed_products' : 1,
+			 'reactants' : 2
+			 }
+
+	if (prefix, category) == (None, None):
+		# there's no point handling this combination
+		raise ValueError("No subset selected")
+
+	elif prefix is None:
+		# category of species can be obtained directly as a string
+		string = read_categories()[category]
+		species[index[category]] = string
+
+	elif category is None:
+		# lookup returns dict, insert not None values into species
+		d = lookup(prefix, form='unparsed')
+		for key, value in d.items():
+			if value is not None: 
+				species[index[key]] = '\n'.join(value)
+	else:
+		# if a filtered lookup returns a list, add joined contents
+		l = lookup(prefix, form='unparsed')[category]
+		if l is not None:
+			matches[index[category]] = '\n'.join(l)
+
+	subset = [None] * 7 # len(delimiters) + len(species)
+	subset[::2] = delimiters # populate even with delimiters
+	subset[1::2] = species # fill odd indices with matches
+
+	return '\n'.join(filter(None, subset))
+
+
 def list_species():
 	"""List species in the database.
 
