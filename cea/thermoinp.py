@@ -9,14 +9,10 @@ properties).
 Several API functions are included to extract data from the source
 file at several levels of decomposition.
 
-  - `read_categories` and `read_species` provide category-keyed
-	dictionaries of raw strings and lists of per-species strings
-	respectively.
-  - `parse` is similar to `read_species` but instead parses the
-	per-species strings into a container with field attributes
-	(namedtuple).
-  - `lookup` can search the output of either `parse` or `read_species`
-	for species with a name matching a prefix.
+  - `parse` returns a category-keyed dictionary of species datasets
+	parsed into a namedtuple.
+  - `lookup` can search the database for species with a name matching
+	a prefix.
   - `list_species` provides simple categorised lists of species names.
 
 """
@@ -24,18 +20,9 @@ import re
 import os
 import collections
 
-def read_categories():
-	"""Split the database into categories.
-	
-	Returns a category-keyed dictionary of string values.
-
-		>>> d = read_categories()
-		>>> sorted(d.keys())
-		['condensed_products', 'gas_products', 'reactants']
-		>>> type(d['reactants'])
-		<type 'str'>
-	
-	"""
+def _read_categories():
+	# Split the database into categories.
+	# Returns a category-keyed dictionary of string values.
 	path = os.path.join(os.path.dirname(__file__),
 					    'data',
 						'thermo.inp')
@@ -52,24 +39,14 @@ def read_categories():
 			   		      '\nEND REACTANTS', re.DOTALL)
 	return dict(zip(keys, pattern.search(contents).groups()))
 
-def read_species():
-	"""Split the database into categorised lists of species.
+def _read_species():
+	# Split the database into categorised lists of species.
 	
-	Returns a category-keyed dictionary of species-separated content. 
-	Each category is a list of species dataset strings. The strings
-	contain newline-delimited records containing species-specific
-	data.
-
-		>>> d = read_species()
-		>>> sorted(d.keys())
-		['condensed_products', 'gas_products', 'reactants']
-		>>> type(d['reactants'])
-		<type 'list'>
-		>>> type(d['reactants'][0])
-		<type 'str'>
-
-	"""
-	categories = read_categories()
+	# Returns a category-keyed dictionary of species-separated
+	# content.  Each category is a list of species dataset strings.
+	# The strings contain newline-delimited records containing
+	# species-specific data.
+	categories = _read_categories()
 	# For each category, separate into per-species strings
 	pattern = re.compile(r'\n(?=[eA-Z(])')
 	return {k:pattern.split(v) for k, v in categories.items()}
@@ -90,7 +67,7 @@ def parse():
 		'Air'
 
 	"""
-	species_categories = read_species()
+	species_categories = _read_species()
 	return {k:[_parse_species(string.split('\n')) for string in lst]
 			for k, lst in species_categories.items()
 			}
@@ -134,7 +111,7 @@ def lookup(prefix, form='parsed'):
 		def match(species):
 			if species.name.startswith(prefix): return True
 	elif form == 'unparsed':
-		source = read_species()
+		source = _read_species()
 		def match(species):
 			if species.startswith(prefix): return True
 	else:
@@ -148,6 +125,74 @@ def lookup(prefix, form='parsed'):
 				   ]
 		if matches: results[category] = matches
 	return results
+
+
+def create_subset(prefix=None, category=None):
+	"""Syntactically valid subset filtered by search term or category.
+	
+	The prefix is passed to lookup() and exhibits the same behaviour.
+	For example, to create a subset containing the family of jet
+	fuels:
+
+		>>> string = create_subset('JP')
+
+	To create a subset of all gaseous products with names containing
+	the prefix 'N2':
+
+		>>> string = create_subset('N2', 'gas_products')
+
+	To output all reactant species:
+
+		>>> string = create_subset(category='reactants')
+	
+	"""
+
+	# Recreate the delimiters, these can be interleaved with
+	# categories. This is quicker than pulling them from the source
+	# and easier than passing this data around.
+	header = ['{:<80s}'.format('thermo')]
+	intervals = '    200.00   1000.00   6000.00  20000.     9/09/04'
+	header.append('{:<80s}'.format(intervals))
+	delimiters = ('\n'.join(header),
+				  '',
+				  '{:<80s}'.format('END PRODUCTS'),
+				  '{:<80s}'.format('END REACTANTS')
+				  )
+
+	# empty list for blocks of species, map category to an index
+	species = [None] * 3 # 3 categories of species, default empty str
+	index = {'gas_products' : 0,
+			 'condensed_products' : 1,
+			 'reactants' : 2
+			 }
+
+	if (prefix, category) == (None, None):
+		# there's no point handling this combination
+		raise ValueError("No subset selected")
+
+	elif prefix is None:
+		# category of species can be obtained directly as a string
+		string = _read_categories()[category]
+		species[index[category]] = string
+
+	elif category is None:
+		# lookup returns dict, insert not None values into species
+		d = lookup(prefix, form='unparsed')
+		for key, value in d.items():
+			if value is not None: 
+				species[index[key]] = '\n'.join(value)
+	else:
+		# if a filtered lookup returns a list, add joined contents
+		l = lookup(prefix, form='unparsed')[category]
+		if l is not None:
+			matches[index[category]] = '\n'.join(l)
+
+	subset = [None] * 7 # len(delimiters) + len(species)
+	subset[::2] = delimiters # populate even with delimiters
+	subset[1::2] = species # fill odd indices with matches
+
+	return '\n'.join(filter(None, subset))
+
 
 def list_species():
 	"""List species in the database.
