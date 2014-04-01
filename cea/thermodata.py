@@ -6,6 +6,7 @@ provide low-level access to the database).
 """
 from math import log
 import collections
+from xml.etree import ElementTree as etree
 
 import constants as CONST
 import thermoinp
@@ -125,6 +126,19 @@ class Thermo(object):
 			if T < interval.bounds[1]:
 				self.interval = interval
 				break		
+	
+	def toxml(self, parent):
+		"""Create an XML representation of the thermodynamic model"""
+		node = etree.SubElement(parent, 'thermo')
+		for interval in self.intervals:
+			attributes = {'Tmin' : interval.bounds[0],
+						  'Tmax' : interval.bounds[1]
+						  }
+			subnode = etree.SubElement(node, 'interval', attributes)
+			coeffs = etree.SubElement(subnode, 'coefficients')
+			coeffs.text = '{!s}'.format(interval.coeffs)
+			consts = etree.SubElement(subnode, 'integ_constants')
+			coeffs.text = '{!s}'.format(interval.integration_consts)
 
 
 class Table(object):
