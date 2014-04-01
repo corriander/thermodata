@@ -7,6 +7,8 @@ provide low-level access to the database).
 from math import log
 import collections
 
+import constants as CONST
+
 Interval = collections.namedtuple('Interval', 
 								  ['bounds',
 								  'coeffs',
@@ -59,3 +61,8 @@ def _dimless_entropy(T, a, b):
 	        + coeffs[5] * T**3 / 3.0 
 	        + coeffs[6] * T**4 / 4.0
 	        )
+
+def _specific_gas_constant(M):
+	# Returns the specific gas constant as a function of molar mass
+	# M : Molar mass, kg/mol
+	return CONST.R_CEA / M
