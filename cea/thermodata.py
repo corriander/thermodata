@@ -11,25 +11,41 @@ import constants as CONST
 import thermoinp
 
 
-db = _load_database()
-
-
 Interval = collections.namedtuple('Interval', 
 								  ['bounds',
 								  'coeffs',
 								  'integration_consts'])
 
-Species = collections.namedtuple('Species', 
-								 ['name',
-								  'molar_mass',
-								  'heat_formation', 
-								  'intervals'])
+
+class Species(object):
+	"""Chemical species"""
+	def __init__(self, name):
+		try:
+			source = db[name]
+		except KeyError as e:
+			raise e("Unrecognised species: {}".format(name))
+		self.name = source
+		self.Mr = source.molwt
+		self.M = CONST.M * self.Mr
+		self.R = CONST.R_CEA / self.M
+		self.Hf = source.h_formation
+		self.hf = source.h_formation / self.M
+		try:
+			intervals = tuple(Interval(interval.bounds,
+									   interval.coeff, 
+									   interval.const)
+    	                      for interval in source.intervals
+							  )
+		except TypeError:
+			intervals = None
+		self.thermo = Thermo(self, intervals)
+
 
 class Thermo(object):
 	"""Thermodynamic state functions (standard-state, P=100 kPa)."""
-	def __init__(self, species, T=298.15):
+	def __init__(self, species, intervals, T=298.15):
 		self.species = species
-		self.R = _specific_gas_constant(species.molar_mass)
+		self.intervals = intervals
 		self.T = T
 	
 	@property
@@ -42,9 +58,9 @@ class Thermo(object):
 
 		# Localise variables for repeated access
 		Ru = CONST.R_CEA
-		R = self.R
-		a = self.species.intervals[0].coeffs
-		b1, b2 = self.species.intervals[0].integration_consts
+		R = self.species.R
+		a = self.intervals[0].coeffs
+		b1, b2 = self.intervals[0].integration_consts
 
 		# Calculate dimensionless values
 		Cp_nodim = _dimless_heat_capacity(T, a)
@@ -54,8 +70,8 @@ class Thermo(object):
 		# Assign properties
 		self._Cp = Cp_nodim * Ru
 		self._cp = Cp_nodim * R
-		self._H = H_nodim * Ru
-		self._h = H_nodim * R
+		self._H = H_nodim * Ru * T
+		self._h = H_nodim * R * T
 		self._S = S_nodim * Ru
 		self._s = S_nodim * R
 
@@ -144,33 +160,12 @@ def _specific_gas_constant(M):
 	return CONST.R_CEA / M
 
 
-def _convert(species):
-	# Map thermoinp.Species instance to internal representation
-	#
-	# Convert the "molecular weight" field (relative molar
-	# mass, g/mol) to molar mass (kg/mol) using the molar mass
-	# constant.
-	molar_mass = CONST.M * species.molwt
-	# Generate the intervals
-	try:
-		intervals = tuple(Interval(interval.bounds,
-								   interval.coeff, 
-								   interval.const)
-                          for interval in species.intervals
-						  )
-	except TypeError:
-		intervals = None
-
-	return Species(species.name,
-			       molar_mass,
-				   species.h_formation,
-				   intervals)
-	
-
 def _load_database():
 	# Return the NASA database as a flat dictionary.
 	categorised_dict = thermoinp.parse()
 	return {species.name:species
 		    for species_list in categorised_dict.values()
-		    for species in map(_convert, species_list)
+		    for species in species_list
 		    }
+
+db = _load_database()
