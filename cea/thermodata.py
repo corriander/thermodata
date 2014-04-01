@@ -127,6 +127,23 @@ class Thermo(object):
 				break		
 
 
+def tabulate(temperature_range, species):
+	"""Produced tabulated data."""
+	header = ('T', 'Cp', 'H-H298', 'S', 'H')
+	units = ('K', 'J/mol-K', 'kJ/mol', 'J/mol-K', 'kJ/mol')
+	body = []
+	for T in temperature_range:
+		species.thermo.T = T
+		Cp = species.thermo.Cp
+		H = species.thermo.H / 1000
+		S = species.thermo.S
+		HH298 = (H - species.Hf / 1000)
+		row = T, Cp, HH298, S, H
+		body.append(row)
+	
+	return header, units, body
+
+
 def _dimless_heat_capacity(T, a):
 	# Returns the dimensionless heat capacity, Cp/R
 	# T : Temperature, K
@@ -139,6 +156,7 @@ def _dimless_heat_capacity(T, a):
 	        + a[5] * T**3
 	        + a[6] * T**4
 	        ) 
+
 
 def _dimless_enthalpy(T, a, b):
 	# Returns the dimensionless enthalpy, H/RT
@@ -154,6 +172,7 @@ def _dimless_enthalpy(T, a, b):
 	        + a[6] * T**4 / 5.0
 	        )
 
+
 def _dimless_entropy(T, a, b):
 	# Returns the dimensionless entropy, S/R.
 	# T : Temperature, K
@@ -167,6 +186,7 @@ def _dimless_entropy(T, a, b):
 	        + a[5] * T**3 / 3.0 
 	        + a[6] * T**4 / 4.0
 	        )
+
 
 def _specific_gas_constant(M):
 	# Returns the specific gas constant as a function of molar mass
