@@ -24,6 +24,9 @@ class Species(object):
 			source = db[name]
 		except KeyError as e:
 			raise e("Unrecognised species: {}".format(name))
+		if source.intervals is None:
+			msg = "Support for single data species not implemented."
+			raise NotImplementedError(msg)
 		self.name = source
 		self.Mr = source.molwt
 		self.M = CONST.M * self.Mr
@@ -46,6 +49,7 @@ class Thermo(object):
 	def __init__(self, species, intervals, T=298.15):
 		self.species = species
 		self.intervals = intervals
+		self.bounds = intervals[0].bounds[0], intervals[-1].bounds[1]
 		self.T = T
 	
 	@property
@@ -55,12 +59,13 @@ class Thermo(object):
 	@T.setter
 	def T(self, T):
 		self._T = T
+		self._select_interval(T)
 
 		# Localise variables for repeated access
 		Ru = CONST.R_CEA
 		R = self.species.R
-		a = self.intervals[0].coeffs
-		b1, b2 = self.intervals[0].integration_consts
+		a = self.interval.coeffs
+		b1, b2 = self.interval.integration_consts
 
 		# Calculate dimensionless values
 		Cp_nodim = _dimless_heat_capacity(T, a)
@@ -111,6 +116,15 @@ class Thermo(object):
 	def s(self):
 		"""Specific entropy, J/kg-K"""
 		return self._s
+
+	def _select_interval(self, T):
+		# Select the appropriate interval for the current temperature
+		if self.bounds[1] < T < self.bounds[0]:
+			raise ValueError("Temperature out of bounds")
+		for interval in self.intervals:
+			if T < interval.bounds[1]:
+				self.interval = interval
+				break		
 
 
 def _dimless_heat_capacity(T, a):
