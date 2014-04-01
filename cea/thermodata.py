@@ -127,6 +127,54 @@ class Thermo(object):
 				break		
 
 
+class Table(object):
+	"""Tabulated data."""
+	def __init__(self, temperature_range, species):
+		self.Trange = temperature_range
+		self.species = species
+		self._tabulate()
+	
+
+	def _tabulate(self):
+		# Produced tabulated data.
+		header = ('T', 'Cp', 'H-H298', 'S', 'H')
+		units = ('K', 'J/mol-K', 'kJ/mol', 'J/mol-K', 'kJ/mol')
+		body = []
+		species = self.species
+		for T in self.Trange:
+			species.thermo.T = T
+			Cp = species.thermo.Cp
+			H = species.thermo.H / 1000
+			S = species.thermo.S
+			HH298 = (H - species.Hf / 1000)
+			row = T, Cp, HH298, S, H
+			body.append(row)
+		self.header, self.units, self.body = header, units, body
+	
+	def __str__(self):
+		# print a table summary
+		Trange = 'T = {}-{} K, {} intervals'.format(Trange[0],
+													Trange[1],
+													len(Trange)
+													)
+		units = '(moles)'
+		return 'Property table: {} {}'.format(Trange, units)
+
+	def formatted(self):
+		"""Format the table for printing/writing to file."""
+		spec = '{:>10}' # right-aligned, column width 9
+		header = ''.join(spec.format(field) for field in self.header)
+		units = ''.join(spec.format(units) for units in self.units)
+		fspec = '{:>10.3f}' 
+		table = [header, units, ''*len(header)]
+		for row in self.body:
+			row = ('  {:<8}'.format(row[0]),
+				   ''.join(fspec.format(value) for value in row[1:])
+				   )
+			table.append(''.join(row))
+		return '\n'.join(table)
+
+
 def _dimless_heat_capacity(T, a):
 	# Returns the dimensionless heat capacity, Cp/R
 	# T : Temperature, K
@@ -139,6 +187,7 @@ def _dimless_heat_capacity(T, a):
 	        + a[5] * T**3
 	        + a[6] * T**4
 	        ) 
+
 
 def _dimless_enthalpy(T, a, b):
 	# Returns the dimensionless enthalpy, H/RT
@@ -154,6 +203,7 @@ def _dimless_enthalpy(T, a, b):
 	        + a[6] * T**4 / 5.0
 	        )
 
+
 def _dimless_entropy(T, a, b):
 	# Returns the dimensionless entropy, S/R.
 	# T : Temperature, K
@@ -167,6 +217,7 @@ def _dimless_entropy(T, a, b):
 	        + a[5] * T**3 / 3.0 
 	        + a[6] * T**4 / 4.0
 	        )
+
 
 def _specific_gas_constant(M):
 	# Returns the specific gas constant as a function of molar mass
