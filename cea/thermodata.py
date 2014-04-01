@@ -20,7 +20,6 @@ Species = collections.namedtuple('Species',
 								  'heat_formation', 
 								  'intervals'])
 
-
 def _dimless_heat_capacity(T, a):
 	# Returns the dimensionless heat capacity, Cp/R
 	# T : Temperature, K
@@ -53,13 +52,13 @@ def _dimless_entropy(T, a, b):
 	# T : Temperature, K
 	# a : coefficients, len(a) == 7
 	# b : integration constant
-	return (- coeffs[0] / T**2 / 2.0 
-	        - coeffs[1] / T 
-	        + (coeffs[2] * log(T) + consts[1])
-	        + coeffs[3] * T
-	        + coeffs[4] * T**2 / 2.0 
-	        + coeffs[5] * T**3 / 3.0 
-	        + coeffs[6] * T**4 / 4.0
+	return (- a[0] / T**2 / 2.0 
+	        - a[1] / T 
+	        + (a[2] * log(T) + b)
+	        + a[3] * T
+	        + a[4] * T**2 / 2.0 
+	        + a[5] * T**3 / 3.0 
+	        + a[6] * T**4 / 4.0
 	        )
 
 def _specific_gas_constant(M):
