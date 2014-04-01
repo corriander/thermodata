@@ -8,6 +8,11 @@ from math import log
 import collections
 
 import constants as CONST
+import thermoinp
+
+
+db = _load_database()
+
 
 Interval = collections.namedtuple('Interval', 
 								  ['bounds',
@@ -137,3 +142,35 @@ def _specific_gas_constant(M):
 	# Returns the specific gas constant as a function of molar mass
 	# M : Molar mass, kg/mol
 	return CONST.R_CEA / M
+
+
+def _convert(species):
+	# Map thermoinp.Species instance to internal representation
+	#
+	# Convert the "molecular weight" field (relative molar
+	# mass, g/mol) to molar mass (kg/mol) using the molar mass
+	# constant.
+	molar_mass = CONST.M * species.molwt
+	# Generate the intervals
+	try:
+		intervals = tuple(Interval(interval.bounds,
+								   interval.coeff, 
+								   interval.const)
+                          for interval in species.intervals
+						  )
+	except TypeError:
+		intervals = None
+
+	return Species(species.name,
+			       molar_mass,
+				   species.h_formation,
+				   intervals)
+	
+
+def _load_database():
+	# Return the NASA database as a flat dictionary.
+	categorised_dict = thermoinp.parse()
+	return {species.name:species
+		    for species_list in categorised_dict.values()
+		    for species in map(_convert, species_list)
+		    }
