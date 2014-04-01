@@ -20,6 +20,78 @@ Species = collections.namedtuple('Species',
 								  'heat_formation', 
 								  'intervals'])
 
+class Thermo(object):
+	"""Thermodynamic state functions (standard-state, P=100 kPa)."""
+	def __init__(self, species, T=298.15):
+		self.species = species
+		self.R = _specific_gas_constant(species.molar_mass)
+		self.T = T
+	
+	@property
+	def T(self):
+		"""Temperature, K"""
+		return self._T
+	@T.setter
+	def T(self, T):
+		self._T = T
+
+		# Localise variables for repeated access
+		Ru = CONST.R_CEA
+		R = self.R
+		a = self.species.intervals[0].coeffs
+		b1, b2 = self.species.intervals[0].integration_consts
+
+		# Calculate dimensionless values
+		Cp_nodim = _dimless_heat_capacity(T, a)
+		H_nodim = _dimless_enthalpy(T, a, b1)
+		S_nodim = _dimless_entropy(T, a, b2)
+
+		# Assign properties
+		self._Cp = Cp_nodim * Ru
+		self._cp = Cp_nodim * R
+		self._H = H_nodim * Ru
+		self._h = H_nodim * R
+		self._S = S_nodim * Ru
+		self._s = S_nodim * R
+
+
+	# Heat capacity properties
+	# ----------------------------------------------------------------
+	@property
+	def Cp(self):
+		"""Molar heat capacity at constant pressure, J/mol-K."""
+		return self._Cp
+
+	@property
+	def cp(self):
+		"""Specific heat capacity at constant pressure, J/kg-K."""
+		return self._cp
+
+	# Enthalpy properties
+	# ----------------------------------------------------------------
+	@property
+	def H(self):
+		"""Molar enthalpy, J/mol"""
+		return self._H
+
+	@property
+	def h(self):
+		"""Specific enthalpy, J/kg"""
+		return self._h
+
+	# Entropy properties
+	# ----------------------------------------------------------------
+	@property
+	def S(self):
+		"""Molar entropy, J/mol-K"""
+		return self._S
+
+	@property
+	def s(self):
+		"""Specific entropy, J/kg-K"""
+		return self._s
+
+
 def _dimless_heat_capacity(T, a):
 	# Returns the dimensionless heat capacity, Cp/R
 	# T : Temperature, K
