@@ -46,6 +46,7 @@ class Thermo(object):
 	def __init__(self, species, intervals, T=298.15):
 		self.species = species
 		self.intervals = intervals
+		self.bounds = intervals[0].bounds[0], intervals[-1].bounds[1]
 		self.T = T
 	
 	@property
