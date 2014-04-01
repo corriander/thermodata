@@ -43,6 +43,27 @@ class Species(object):
 		except TypeError:
 			intervals = None
 		self.thermo = Thermo(self, intervals)
+	
+	def toxml(self, parent):
+		"""Create an XML representation of the thermodynamic model"""
+		attributes = {'name' : self.name}
+		node = etree.SubElement(parent, 'species', attributes)
+		M = etree.SubElement(node,
+							 'molar_mass', 
+							 {'units' : 'kg/mol'}
+							 )
+		M.text = str(self.M)
+		R = etree.SubElement(node,
+							 'gas_constant',
+							 {'units' : 'J/kg-K'}
+							 )
+		R.text = str(self.R)
+		Hf = etree.SubElement(node,
+							 'formation_enthalpy',
+							 {'units' : 'J/mol'}
+							 )
+		Hf.text = str(self.Hf)
+		self.thermo.toxml(node)
 
 
 class Thermo(object):
@@ -129,7 +150,9 @@ class Thermo(object):
 	
 	def toxml(self, parent):
 		"""Create an XML representation of the thermodynamic model"""
-		node = etree.SubElement(parent, 'thermo')
+		attributes = {'Tmin' : self.bounds[0],
+					 'Tmax' : self.bounds[1]}
+		node = etree.SubElement(parent, 'thermo', attributes)
 		for interval in self.intervals:
 			attributes = {'Tmin' : interval.bounds[0],
 						  'Tmax' : interval.bounds[1]
