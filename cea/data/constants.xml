@@ -1,0 +1,23 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!--P.J. Mohr, B.N. Taylor, and D.B. Newell (2011), "The 2010 CODATA
+   	Recommended Values of the Fundamental Physical Constants" (Web
+   	Version 6.0). This database was developed by J. Baker, M. Douma,
+   	and S. Kotochigova. Available: http://physics.nist.gov/constants
+   	National Institute of Standards and Technology, Gaithersburg, MD
+	20899.-->
+<PhysicalConstantSet>
+	<PhysicalConstant name="molar gas constant">
+		<value>8.3144621</value>
+		<uncertainty>7.5e-06</uncertainty>
+		<units>J mol^-1 K^-1</units>
+	</PhysicalConstant>
+	<PhysicalConstant name="cea molar gas constant">
+		<value>8.314510</value>
+		<units>J mol^-1 K^-1</units>
+	</PhysicalConstant>
+	<PhysicalConstant name="molar mass constant">
+		<value>0.001</value>
+		<uncertainty>0.0</uncertainty>
+		<units>kg mol^-1</units>
+	</PhysicalConstant>
+</PhysicalConstantSet>
