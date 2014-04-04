@@ -18,6 +18,17 @@ Interval = collections.namedtuple('Interval',
 								  'integration_consts'])
 
 
+class ChemDB(dict):
+	"""Chemical database."""
+	def __init__(self):
+		self.loader = _thermoinp_loader()
+		self._load()
+	
+	def _load(self):
+		# Load entire database contents and store
+		self._source_dict = self.loader()
+
+
 class Species(object):
 	"""Chemical species"""
 	def __init__(self, name):
