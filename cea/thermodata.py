@@ -28,6 +28,11 @@ class ChemDB(dict):
 		# Load entire database contents and store
 		self._source_dict = self.loader()
 
+	def select(self, names):
+		"""Generate database by a list of species names."""
+		for name in names:
+			self.update(name, self._source_dict[name])
+
 
 class Species(object):
 	"""Chemical species"""
