@@ -21,17 +21,17 @@ Interval = collections.namedtuple('Interval',
 class ChemDB(dict):
 	"""Chemical database."""
 	def __init__(self):
-		self.loader = _thermoinp_loader()
+		self.loader = _thermoinp_loader
 		self._load()
 	
 	def _load(self):
 		# Load entire database contents and store
 		self._source_dict = self.loader()
-
+	
 	def select(self, names):
 		"""Generate database by a list of species names."""
 		for name in names:
-			self.update(name, self._source_dict[name])
+			self.__setitem__(name, self._source_dict[name])
 
 
 class Species(object):
@@ -45,10 +45,17 @@ class Species(object):
 		# Derived attributes:
 		self.M = CONST.M * self.Mr
 		self.R = CONST.R_CEA / self.M
-		self.hf = self.Hf / self.M
+		try:
+			self.hf = self.Hf / self.M
+		except TypeError:
+			# formation enthalpy undefined in source Species
+			self.hf = None
 
 		# Attach thermodynamic property model
-		self.thermo = Thermo(self, intervals)
+		if intervals:
+			self.thermo = Thermo(self, intervals)
+		else:
+			self.thermo = None
 	
 	def toxml(self, parent):
 		"""Create an XML representation of the thermodynamic model"""
@@ -92,21 +99,22 @@ class Thermo(object):
 		# Localise variables for repeated access
 		Ru = CONST.R_CEA
 		R = self.species.R
-		a = self.interval.coeffs
-		b1, b2 = self.interval.integration_consts
+		if self.interval:
+			a = self.interval.coeffs
+			b1, b2 = self.interval.integration_consts
 
-		# Calculate dimensionless values
-		Cp_nodim = _dimless_heat_capacity(T, a)
-		H_nodim = _dimless_enthalpy(T, a, b1)
-		S_nodim = _dimless_entropy(T, a, b2)
+			# Calculate dimensionless values
+			Cp_nodim = _dimless_heat_capacity(T, a)
+			H_nodim = _dimless_enthalpy(T, a, b1)
+			S_nodim = _dimless_entropy(T, a, b2)
 
-		# Assign properties
-		self._Cp = Cp_nodim * Ru
-		self._cp = Cp_nodim * R
-		self._H = H_nodim * Ru * T
-		self._h = H_nodim * R * T
-		self._S = S_nodim * Ru
-		self._s = S_nodim * R
+			# Assign properties
+			self._Cp = Cp_nodim * Ru
+			self._cp = Cp_nodim * R
+			self._H = H_nodim * Ru * T
+			self._h = H_nodim * R * T
+			self._S = S_nodim * Ru
+			self._s = S_nodim * R
 
 
 	# Heat capacity properties
@@ -147,8 +155,9 @@ class Thermo(object):
 
 	def _select_interval(self, T):
 		# Select the appropriate interval for the current temperature
-		if self.bounds[1] < T < self.bounds[0]:
+		if self.bounds[1] < T  < self.bounds[0]:
 			raise ValueError("Temperature out of bounds")
+		self.interval = None
 		for interval in self.intervals:
 			if T < interval.bounds[1]:
 				self.interval = interval
@@ -284,11 +293,12 @@ def _map_species(source):
 	# map thermoinp.Species instance data to Species instances.
 	try:
 		intervals = [_map_interval(i) for i in source.intervals]
-	except AttributeError:
+	except TypeError:
 		intervals = None
 
 	return Species(source.name, source.molwt, source.h_formation,
 			   	   intervals)
+
 
 def _map_interval(source):
 	# map thermoinp.Interval instance data to Interval instances
