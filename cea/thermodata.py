@@ -20,14 +20,42 @@ Interval = collections.namedtuple('Interval',
 
 
 class ChemDB(dict):
-	"""Chemical database."""
+	"""Chemical database.
+
+	This class loads the source database in the background on
+	isntantiation and then provides a mechanism for selecting species
+	from the source to add to the current "view". 
+	
+		>>> db = ChemDB()
+		>>> db
+		{}
+		>>> db.select(('Air',)) # NOTE: names passed as sequence
+		>>> air = db['Air']
+
+	The method will raise an exception if the chemical species does
+	not exist in the source:
+
+		>>> db.select(('Adamantium',))
+		Traceback (most recent call last):
+			...
+		Exception: Adamantium is not in the source database.
+
+	The current database entries can be written to `stdout` via the
+	`write` method or to a (new) file by specifying the path as an
+	argument.
+
+	"""
 	def __init__(self):
 		self._thermoinp_load()
 	
 	def select(self, names):
 		"""Generate database by a list of species names."""
 		for name in names:
-			self.__setitem__(name, self._source_dict[name])
+			try:
+				self.__setitem__(name, self._source_dict[name])
+			except KeyError as e:
+				msg = "{} is not in the source database.".format(name)
+				raise Exception(msg)
 
 	def _thermoinp_load(self):
 		# Database loader. Loads the contents of `thermo.inp` into a
@@ -62,17 +90,18 @@ class ChemDB(dict):
 
 		root = self.toxml()
 		_indentxml(root)
-		with f:
-			etree.ElementTree(root).write(f,
-										  xml_declaration=True,
-										  encoding='utf-8',
-										  method='xml')
+		etree.ElementTree(root).write(f,
+									  xml_declaration=True,
+									  encoding='utf-8',
+									  method='xml')
+		if f is not sys.stdout:
+			f.close()
 
-	@staticmethod
-	def _map_species(source):
+	def _map_species(self, source):
 		# map thermoinp.Species instance data to Species instances.
 		try:
-			intervals = [_map_interval(i) for i in source.intervals]
+			intervals = [self._map_interval(i)
+						 for i in source.intervals]
 		except TypeError:
 			intervals = None
 	
@@ -344,3 +373,7 @@ def _indentxml(elem, level=0):
 	else:
 		if level and (not elem.tail or not elem.tail.strip()):
 			elem.tail = i
+
+if __name__ == '__main__':
+	import doctest
+	doctest.testmod()
