@@ -133,7 +133,7 @@ class Species(object):
 
 		# Derived attributes:
 		self.M = CONST.M * self.Mr
-		self.R = CONST.R_CEA / self.M
+		self._calculate_specific_gas_constant()
 		try:
 			self.hf = self.Hf / self.M
 		except TypeError:
@@ -166,6 +166,11 @@ class Species(object):
 							 )
 		Hf.text = str(self.Hf)
 		self.thermo.toxml(node)
+	
+	def _calculate_specific_gas_constant(self):
+		# Returns the specific gas constant as a function of molar
+		# mass M : Molar mass, kg/mol
+		self.R = CONST.R_CEA / self.M
 
 
 class Thermo(object):
@@ -403,11 +408,6 @@ def _dimless_entropy(T, a, b):
 	        + a[6] * T**4 / 4.0
 	        )
 
-
-def _specific_gas_constant(M):
-	# Returns the specific gas constant as a function of molar mass
-	# M : Molar mass, kg/mol
-	return CONST.R_CEA / M
 
 def _indentxml(elem, level=0):
 	# Indent XML string representation of elements;
