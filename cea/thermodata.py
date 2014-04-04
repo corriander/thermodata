@@ -262,12 +262,19 @@ def _specific_gas_constant(M):
 	return CONST.R_CEA / M
 
 
-def _load_database():
-	# Return the NASA database as a flat dictionary.
+def _thermoinp_loader():
+	# Database loader. Loads the contents of `thermo.inp` into a flat
+	# dictionary.
+	# TODO: Basis for the interface to other database sources (e.g
+	# XML).
 	categorised_dict = thermoinp.parse()
 	return {species.name:species
 		    for species_list in categorised_dict.values()
 		    for species in species_list
 		    }
 
-db = _load_database()
+# --------------------------------------------------------------------
+# 		DATA
+# --------------------------------------------------------------------
+
+db = _thermoinp_loader()
