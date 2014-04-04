@@ -20,7 +20,7 @@ Interval = collections.namedtuple('Interval',
 
 
 class ChemDB(dict):
-	"""Chemical database.
+	"""Chemical database with dict-like access.
 
 	This class loads the source database in the background on
 	isntantiation and then provides a mechanism for selecting species
