@@ -282,8 +282,17 @@ def _thermoinp_loader():
 
 def _map_species(source):
 	# map thermoinp.Species instance data to Species instances.
-	return cls(source.name, source.molwt, source.h_formation,
-			   source.intervals)
+	try:
+		intervals = [_map_interval(i) for i in source.intervals]
+	except AttributeError:
+		intervals = None
+
+	return Species(source.name, source.molwt, source.h_formation,
+			   	   intervals)
+
+def _map_interval(source):
+	# map thermoinp.Interval instance data to Interval instances
+	return Interval(source.bounds, source.coeff, source.const)
 
 
 # --------------------------------------------------------------------
