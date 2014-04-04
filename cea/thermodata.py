@@ -115,7 +115,16 @@ class ChemDB(dict):
 
 
 class Species(object):
-	"""Chemical species"""
+	"""Chemical species.
+	
+	A chemical species is a substance of known composition in a
+	defined phase and, if an ion, with a specified charge.
+	
+	Species can be instantiated directly, but is generally
+	instantiated in the database loading during the instantiation of
+	ChemDB.
+	
+	"""
 	def __init__(self, name, rel_molar_mass, formation_enthalpy,
 				 intervals=None):
 		self.name = name
