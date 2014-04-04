@@ -31,28 +31,18 @@ class ChemDB(dict):
 
 class Species(object):
 	"""Chemical species"""
-	def __init__(self, name):
-		try:
-			source = db[name]
-		except KeyError as e:
-			raise e("Unrecognised species: {}".format(name))
-		if source.intervals is None:
-			msg = "Support for single data species not implemented."
-			raise NotImplementedError(msg)
-		self.name = source
-		self.Mr = source.molwt
+	def __init__(self, name, rel_molar_mass, formation_enthalpy,
+				 intervals=None):
+		self.name = name
+		self.Mr = rel_molar_mass
+		self.Hf = formation_enthalpy
+
+		# Derived attributes:
 		self.M = CONST.M * self.Mr
 		self.R = CONST.R_CEA / self.M
-		self.Hf = source.h_formation
-		self.hf = source.h_formation / self.M
-		try:
-			intervals = tuple(Interval(interval.bounds,
-									   interval.coeff, 
-									   interval.const)
-    	                      for interval in source.intervals
-							  )
-		except TypeError:
-			intervals = None
+		self.hf = self.Hf / self.M
+
+		# Attach thermodynamic property model
 		self.thermo = Thermo(self, intervals)
 	
 	def toxml(self, parent):
@@ -279,10 +269,17 @@ def _thermoinp_loader():
 	# TODO: Basis for the interface to other database sources (e.g
 	# XML).
 	categorised_dict = thermoinp.parse()
-	return {species.name:species
+	return {species.name:_map_species(species)
 		    for species_list in categorised_dict.values()
 		    for species in species_list
 		    }
+
+
+def _map_species(source):
+	# map thermoinp.Species instance data to Species instances.
+	return cls(source.name, source.molwt, source.h_formation,
+			   source.intervals)
+
 
 # --------------------------------------------------------------------
 # 		DATA
