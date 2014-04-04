@@ -21,17 +21,37 @@ Interval = collections.namedtuple('Interval',
 class ChemDB(dict):
 	"""Chemical database."""
 	def __init__(self):
-		self.loader = _thermoinp_loader
-		self._load()
-	
-	def _load(self):
-		# Load entire database contents and store
-		self._source_dict = self.loader()
+		self._thermoinp_load()
 	
 	def select(self, names):
 		"""Generate database by a list of species names."""
 		for name in names:
 			self.__setitem__(name, self._source_dict[name])
+
+	def _thermoinp_load(self):
+		# Database loader. Loads the contents of `thermo.inp` into a
+		# flat dictionary.
+		categ_dict = thermoinp.parse()
+		self._source_dict = {species.name:self._map_species(species)
+			    			 for species_list in categ_dict.values()
+			    			 for species in species_list
+			    			 }
+	
+	@staticmethod
+	def _map_species(source):
+		# map thermoinp.Species instance data to Species instances.
+		try:
+			intervals = [_map_interval(i) for i in source.intervals]
+		except TypeError:
+			intervals = None
+	
+		return Species(source.name, source.molwt, source.h_formation,
+				   	   intervals)
+	
+	@staticmethod
+	def _map_interval(source):
+		# map thermoinp.Interval instance data to Interval instances
+		return Interval(source.bounds, source.coeff, source.const)
 
 
 class Species(object):
@@ -275,38 +295,3 @@ def _specific_gas_constant(M):
 	# Returns the specific gas constant as a function of molar mass
 	# M : Molar mass, kg/mol
 	return CONST.R_CEA / M
-
-
-def _thermoinp_loader():
-	# Database loader. Loads the contents of `thermo.inp` into a flat
-	# dictionary.
-	# TODO: Basis for the interface to other database sources (e.g
-	# XML).
-	categorised_dict = thermoinp.parse()
-	return {species.name:_map_species(species)
-		    for species_list in categorised_dict.values()
-		    for species in species_list
-		    }
-
-
-def _map_species(source):
-	# map thermoinp.Species instance data to Species instances.
-	try:
-		intervals = [_map_interval(i) for i in source.intervals]
-	except TypeError:
-		intervals = None
-
-	return Species(source.name, source.molwt, source.h_formation,
-			   	   intervals)
-
-
-def _map_interval(source):
-	# map thermoinp.Interval instance data to Interval instances
-	return Interval(source.bounds, source.coeff, source.const)
-
-
-# --------------------------------------------------------------------
-# 		DATA
-# --------------------------------------------------------------------
-
-db = _thermoinp_loader()
