@@ -4,6 +4,7 @@ This module is built on top of the `thermoinp` module (which serves to
 provide low-level access to the database).
 
 """
+import sys
 from math import log
 import collections
 from xml.etree import ElementTree as etree
@@ -37,6 +38,36 @@ class ChemDB(dict):
 			    			 for species in species_list
 			    			 }
 	
+	def toxml(self):
+		"""Represent database contents in XML form."""
+		root = etree.Element('chemdb')
+		for species_obj in self.values():
+			species_obj.toxml(root)
+
+		return root
+	
+	def write(self, path=None):
+		"""Write database in XML format.
+		
+		  - If file path is unspecified, XML is written to STDOUT.
+		  - If file exists, an exception is raised.
+		
+		"""
+		if path is None:
+			f = sys.stdout
+		else:
+			if os.path.isfile(path):
+				raise IOError("{} exists.".format(path))
+			f = open(path, 'w')
+
+		root = self.toxml()
+		_indentxml(root)
+		with f:
+			etree.ElementTree(root).write(f,
+										  xml_declaration=True,
+										  encoding='utf-8',
+										  method='xml')
+
 	@staticmethod
 	def _map_species(source):
 		# map thermoinp.Species instance data to Species instances.
@@ -185,18 +216,18 @@ class Thermo(object):
 	
 	def toxml(self, parent):
 		"""Create an XML representation of the thermodynamic model"""
-		attributes = {'Tmin' : self.bounds[0],
-					 'Tmax' : self.bounds[1]}
+		attributes = {'Tmin' : str(self.bounds[0]),
+					 'Tmax' : str(self.bounds[1])}
 		node = etree.SubElement(parent, 'thermo', attributes)
 		for interval in self.intervals:
-			attributes = {'Tmin' : interval.bounds[0],
-						  'Tmax' : interval.bounds[1]
+			attributes = {'Tmin' : str(interval.bounds[0]),
+						  'Tmax' : str(interval.bounds[1])
 						  }
 			subnode = etree.SubElement(node, 'interval', attributes)
 			coeffs = etree.SubElement(subnode, 'coefficients')
 			coeffs.text = '{!s}'.format(interval.coeffs)
 			consts = etree.SubElement(subnode, 'integ_constants')
-			coeffs.text = '{!s}'.format(interval.integration_consts)
+			consts.text = '{!s}'.format(interval.integration_consts)
 
 
 class Table(object):
@@ -295,3 +326,21 @@ def _specific_gas_constant(M):
 	# Returns the specific gas constant as a function of molar mass
 	# M : Molar mass, kg/mol
 	return CONST.R_CEA / M
+
+def _indentxml(elem, level=0):
+	# Indent XML string representation of elements;
+	# http://effbot.org/zone/element-lib.htm#prettyprint
+	indent = "    "
+	i = "\n" +level*indent
+	if len(elem):
+		if not elem.text or not elem.text.strip():
+			elem.text = i + indent
+		if not elem.tail or not elem.tail.strip():
+			elem.tail = i
+		for elem in elem:
+			_indentxml(elem, level+1)
+		if not elem.tail or not elem.tail.strip():
+			elem.tail = i
+	else:
+		if level and (not elem.tail or not elem.tail.strip()):
+			elem.tail = i
