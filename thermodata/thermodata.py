@@ -9,15 +9,11 @@ instantiation. Subsets are created via the `select` method by
 specifying a list/tuple of chemical species names.
 
 	>>> db = ChemDB()
-	>>> db.select(('Air', 'N2', 'O2', 'Ar', CO2'))
+	>>> db.select(('Air', 'N2', 'O2', 'Ar', 'CO2'))
 
 The current database view can be written to XML via the `write`
-method:
-
-	>>> db.write()
-
-Where no path is specified (as in the example), the serialised data is
-written to STDOUT.
+method. Where no path is specified, the serialised data is written to
+STDOUT.
 
 The module also provides a Table class for generating tabulated data.
 
@@ -26,7 +22,7 @@ The module also provides a Table class for generating tabulated data.
 
 The `formatted` method which returns a formatted string:
 
-	>>> table.formatted()
+	>>> formatted_table = table.formatted()
 
 Key limitations:
 
