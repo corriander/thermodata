@@ -292,7 +292,27 @@ class Thermo(object):
 
 
 class Table(object):
-	"""Tabulated data."""
+	"""Tabulated data.
+	
+	Generates tabulated state function values for a specified
+	temperature range and chemical species.
+
+		>>> db = ChemDB()
+		>>> db.select(('Air',))
+		>>> air = db['Air']
+		>>> T_range = (200, 500, 2000)
+		>>> table = Table(T_range, air)
+		>>> str(table)
+		'Property table: T = 200-2000 K, 3 intervals (moles)'
+		>>> print table.formatted()
+		         T        Cp    H-H298         S         H
+		         K   J/mol-K    kJ/mol   J/mol-K    kJ/mol
+		--------------------------------------------------
+		  200         29.034    -2.852   187.221    -2.978
+		  500         29.821     5.932   214.001     5.807
+		  2000        36.216    56.595   259.764    56.470
+	
+	"""
 	def __init__(self, temperature_range, species):
 		self.Trange = temperature_range
 		self.species = species
@@ -317,12 +337,13 @@ class Table(object):
 	
 	def __str__(self):
 		# print a table summary
-		Trange = 'T = {}-{} K, {} intervals'.format(Trange[0],
-													Trange[1],
-													len(Trange)
-													)
+		Trange = self.Trange
+		T_str = 'T = {}-{} K, {} intervals'.format(Trange[0],
+												   Trange[-1],
+												   len(Trange)
+												   )
 		units = '(moles)'
-		return 'Property table: {} {}'.format(Trange, units)
+		return 'Property table: {} {}'.format(T_str, units)
 
 	def formatted(self):
 		"""Format the table for printing/writing to file."""
@@ -330,7 +351,7 @@ class Table(object):
 		header = ''.join(spec.format(field) for field in self.header)
 		units = ''.join(spec.format(units) for units in self.units)
 		fspec = '{:>10.3f}' 
-		table = [header, units, ''*len(header)]
+		table = [header, units, '-'*len(header)]
 		for row in self.body:
 			row = ('  {:<8}'.format(row[0]),
 				   ''.join(fspec.format(value) for value in row[1:])
