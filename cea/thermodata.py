@@ -6,6 +6,7 @@ provide low-level access to the database).
 """
 from math import log
 import collections
+from xml.etree import ElementTree as etree
 
 import constants as CONST
 import thermoinp
@@ -17,31 +18,85 @@ Interval = collections.namedtuple('Interval',
 								  'integration_consts'])
 
 
-class Species(object):
-	"""Chemical species"""
-	def __init__(self, name):
+class ChemDB(dict):
+	"""Chemical database."""
+	def __init__(self):
+		self._thermoinp_load()
+	
+	def select(self, names):
+		"""Generate database by a list of species names."""
+		for name in names:
+			self.__setitem__(name, self._source_dict[name])
+
+	def _thermoinp_load(self):
+		# Database loader. Loads the contents of `thermo.inp` into a
+		# flat dictionary.
+		categ_dict = thermoinp.parse()
+		self._source_dict = {species.name:self._map_species(species)
+			    			 for species_list in categ_dict.values()
+			    			 for species in species_list
+			    			 }
+	
+	@staticmethod
+	def _map_species(source):
+		# map thermoinp.Species instance data to Species instances.
 		try:
-			source = db[name]
-		except KeyError as e:
-			raise e("Unrecognised species: {}".format(name))
-		if source.intervals is None:
-			msg = "Support for single data species not implemented."
-			raise NotImplementedError(msg)
-		self.name = source
-		self.Mr = source.molwt
-		self.M = CONST.M * self.Mr
-		self.R = CONST.R_CEA / self.M
-		self.Hf = source.h_formation
-		self.hf = source.h_formation / self.M
-		try:
-			intervals = tuple(Interval(interval.bounds,
-									   interval.coeff, 
-									   interval.const)
-    	                      for interval in source.intervals
-							  )
+			intervals = [_map_interval(i) for i in source.intervals]
 		except TypeError:
 			intervals = None
-		self.thermo = Thermo(self, intervals)
+	
+		return Species(source.name, source.molwt, source.h_formation,
+				   	   intervals)
+	
+	@staticmethod
+	def _map_interval(source):
+		# map thermoinp.Interval instance data to Interval instances
+		return Interval(source.bounds, source.coeff, source.const)
+
+
+class Species(object):
+	"""Chemical species"""
+	def __init__(self, name, rel_molar_mass, formation_enthalpy,
+				 intervals=None):
+		self.name = name
+		self.Mr = rel_molar_mass
+		self.Hf = formation_enthalpy
+
+		# Derived attributes:
+		self.M = CONST.M * self.Mr
+		self.R = CONST.R_CEA / self.M
+		try:
+			self.hf = self.Hf / self.M
+		except TypeError:
+			# formation enthalpy undefined in source Species
+			self.hf = None
+
+		# Attach thermodynamic property model
+		if intervals:
+			self.thermo = Thermo(self, intervals)
+		else:
+			self.thermo = None
+	
+	def toxml(self, parent):
+		"""Create an XML representation of the thermodynamic model"""
+		attributes = {'name' : self.name}
+		node = etree.SubElement(parent, 'species', attributes)
+		M = etree.SubElement(node,
+							 'molar_mass', 
+							 {'units' : 'kg/mol'}
+							 )
+		M.text = str(self.M)
+		R = etree.SubElement(node,
+							 'gas_constant',
+							 {'units' : 'J/kg-K'}
+							 )
+		R.text = str(self.R)
+		Hf = etree.SubElement(node,
+							 'formation_enthalpy',
+							 {'units' : 'J/mol'}
+							 )
+		Hf.text = str(self.Hf)
+		self.thermo.toxml(node)
 
 
 class Thermo(object):
@@ -64,21 +119,22 @@ class Thermo(object):
 		# Localise variables for repeated access
 		Ru = CONST.R_CEA
 		R = self.species.R
-		a = self.interval.coeffs
-		b1, b2 = self.interval.integration_consts
+		if self.interval:
+			a = self.interval.coeffs
+			b1, b2 = self.interval.integration_consts
 
-		# Calculate dimensionless values
-		Cp_nodim = _dimless_heat_capacity(T, a)
-		H_nodim = _dimless_enthalpy(T, a, b1)
-		S_nodim = _dimless_entropy(T, a, b2)
+			# Calculate dimensionless values
+			Cp_nodim = _dimless_heat_capacity(T, a)
+			H_nodim = _dimless_enthalpy(T, a, b1)
+			S_nodim = _dimless_entropy(T, a, b2)
 
-		# Assign properties
-		self._Cp = Cp_nodim * Ru
-		self._cp = Cp_nodim * R
-		self._H = H_nodim * Ru * T
-		self._h = H_nodim * R * T
-		self._S = S_nodim * Ru
-		self._s = S_nodim * R
+			# Assign properties
+			self._Cp = Cp_nodim * Ru
+			self._cp = Cp_nodim * R
+			self._H = H_nodim * Ru * T
+			self._h = H_nodim * R * T
+			self._S = S_nodim * Ru
+			self._s = S_nodim * R
 
 
 	# Heat capacity properties
@@ -119,12 +175,28 @@ class Thermo(object):
 
 	def _select_interval(self, T):
 		# Select the appropriate interval for the current temperature
-		if self.bounds[1] < T < self.bounds[0]:
+		if self.bounds[1] < T  < self.bounds[0]:
 			raise ValueError("Temperature out of bounds")
+		self.interval = None
 		for interval in self.intervals:
 			if T < interval.bounds[1]:
 				self.interval = interval
 				break		
+	
+	def toxml(self, parent):
+		"""Create an XML representation of the thermodynamic model"""
+		attributes = {'Tmin' : self.bounds[0],
+					 'Tmax' : self.bounds[1]}
+		node = etree.SubElement(parent, 'thermo', attributes)
+		for interval in self.intervals:
+			attributes = {'Tmin' : interval.bounds[0],
+						  'Tmax' : interval.bounds[1]
+						  }
+			subnode = etree.SubElement(node, 'interval', attributes)
+			coeffs = etree.SubElement(subnode, 'coefficients')
+			coeffs.text = '{!s}'.format(interval.coeffs)
+			consts = etree.SubElement(subnode, 'integ_constants')
+			coeffs.text = '{!s}'.format(interval.integration_consts)
 
 
 class Table(object):
@@ -223,14 +295,3 @@ def _specific_gas_constant(M):
 	# Returns the specific gas constant as a function of molar mass
 	# M : Molar mass, kg/mol
 	return CONST.R_CEA / M
-
-
-def _load_database():
-	# Return the NASA database as a flat dictionary.
-	categorised_dict = thermoinp.parse()
-	return {species.name:species
-		    for species_list in categorised_dict.values()
-		    for species in species_list
-		    }
-
-db = _load_database()
