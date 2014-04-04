@@ -49,6 +49,7 @@ class ChemDB(dict):
 	def write(self):
 		"""Write database to stdout in XML format."""
 		root = self.toxml()
+		_indentxml(root)
 		etree.ElementTree(root).write(sys.stdout)
 
 	@staticmethod
@@ -309,3 +310,21 @@ def _specific_gas_constant(M):
 	# Returns the specific gas constant as a function of molar mass
 	# M : Molar mass, kg/mol
 	return CONST.R_CEA / M
+
+def _indentxml(elem, level=0):
+	# Indent XML string representation of elements;
+	# http://effbot.org/zone/element-lib.htm#prettyprint
+	indent = "    "
+	i = "\n" +level*indent
+	if len(elem):
+		if not elem.text or not elem.text.strip():
+			elem.text = i + indent
+		if not elem.tail or not elem.tail.strip():
+			elem.tail = i
+		for elem in elem:
+			_indentxml(elem, level+1)
+		if not elem.tail or not elem.tail.strip():
+			elem.tail = i
+	else:
+		if level and (not elem.tail or not elem.tail.strip()):
+			elem.tail = i
