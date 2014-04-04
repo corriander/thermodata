@@ -173,7 +173,21 @@ class Thermo(object):
 	
 	Temperature, T, is used as the free variable here. On setting the
 	temperature property state functions are evaluated and stored in
-	attributes.
+	attributes. In the event no intervals are provided, this
+	evaluation process does not happen (the necessary data is not
+	available).
+
+	The following properties are available for standard-state
+	conditions (specified temperature and standard pressure, 
+	P =	100 kPa):
+
+	  - T      : Temperature
+	  - Cp, cp : Standard-state heat capacity at constant pressure 
+	  - H, h   : Standard-state enthalpy
+	  - S, s   : Standard-state entropy
+
+	Note that upper-case and lower-case properties are in units of
+	amount-of-substance (/mol) and mass (/kg) respectively.
 	
 	Like Species, Thermo can be instantiated directly but is generally
 	handled during the ChemDB database loading.
