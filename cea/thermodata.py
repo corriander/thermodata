@@ -46,11 +46,27 @@ class ChemDB(dict):
 
 		return root
 	
-	def write(self):
-		"""Write database to stdout in XML format."""
+	def write(self, path=None):
+		"""Write database in XML format.
+		
+		  - If file path is unspecified, XML is written to STDOUT.
+		  - If file exists, an exception is raised.
+		
+		"""
+		if path is None:
+			f = sys.stdout
+		else:
+			if os.path.isfile(path):
+				raise IOError("{} exists.".format(path))
+			f = open(path, 'w')
+
 		root = self.toxml()
 		_indentxml(root)
-		etree.ElementTree(root).write(sys.stdout)
+		with f:
+			etree.ElementTree(root).write(f,
+										  xml_declaration=True,
+										  encoding='utf-8',
+										  method='xml')
 
 	@staticmethod
 	def _map_species(source):
