@@ -169,7 +169,16 @@ class Species(object):
 
 
 class Thermo(object):
-	"""Thermodynamic state functions (standard-state, P=100 kPa)."""
+	"""Thermodynamic state functions (standard-state, P=100 kPa).
+	
+	Temperature, T, is used as the free variable here. On setting the
+	temperature property state functions are evaluated and stored in
+	attributes.
+	
+	Like Species, Thermo can be instantiated directly but is generally
+	handled during the ChemDB database loading.
+		
+	"""
 	def __init__(self, species, intervals, T=298.15):
 		self.species = species
 		self.intervals = intervals
