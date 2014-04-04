@@ -1,7 +1,51 @@
-"""Extended interface to  the NASA Glenn thermodynamic database
+"""Extended interface to the NASA Glenn thermodynamic database.
 
 This module is built on top of the `thermoinp` module (which serves to
 provide low-level access to the database).
+
+The main point of access to chemical species data is the class ChemDB.
+ChemDB loads the complete database from the source file on
+instantiation. Subsets are created via the `select` method by
+specifying a list/tuple of chemical species names.
+
+	>>> db = ChemDB()
+	>>> db.select(('Air', 'N2', 'O2', 'Ar', CO2'))
+
+The current database view can be written to XML via the `write`
+method:
+
+	>>> db.write()
+
+Where no path is specified (as in the example), the serialised data is
+written to STDOUT.
+
+The module also provides a Table class for generating tabulated data.
+
+	>>> temperature_range = (200, 298.15, 500, 2000) 
+	>>> table = Table(temperature_range, db['Air'])
+
+The `formatted` method which returns a formatted string:
+
+	>>> table.formatted()
+
+Key limitations:
+
+  - Currently tables use molar units (J/mol or J/mol-K as
+	appropriate).
+  - State functions in different units are accessed via distinct
+	properties. This is likely to change.
+  - Database selections require the full chemical species name
+	(basically it's necessary to know what you are looking for). The
+	`thermoinp` module provides a prefix-based lookup however, and
+	there's always the source data file.
+  - Only a limited amount of species data is currently represented at
+	this level.
+  - XML structure is a WIP.
+  - Loading from XML (or other database formats) is not supported at
+  	this time.
+  - Species and Thermo are not intended for direct instantiation but
+  	they will probably get subclassed. Generally the API (as loosely
+	defined as it is) is a WIP and dependent on emerging requirements.
 
 """
 import sys
