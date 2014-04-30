@@ -1,6 +1,6 @@
 import unittest
 import collections
-from ..thermodata import Interval, Species, Thermo
+from ..thermodata import Interval, Species, Thermo, ChemDB, Table
 
 class TestSpecies(unittest.TestCase):
 	"""Test Species instantiated w/ and w/o formation_enthalpy."""
@@ -10,18 +10,19 @@ class TestSpecies(unittest.TestCase):
 
 	def test_M(self):
 		"""Test that M (molar mass) is derived from Mr correctly."""
-		self.assertEqual(self.species.M, 0.04409562)
-		self.assertEqual(self.species_with_Href.M, 0.02)
+		self.assertEqual(self.species.M, 0.0441, delta=0.0001)
+		self.assertEqual(self.species_with_Href.M, 0.002, delta=0.0001)
 	
 	def test_R(self):
 		"""Test that R (spec. gas constant) is derived correctly."""
-		self.assertAlmostEqual(self.species.R, 188.56)
-		self.assertAlmostEqual(self.species_with_Href.R, 415.73)
+		self.assertAlmostEqual(self.species.R, 188.6, delta=0.1)
+		self.assertAlmostEqual(self.species_with_Href.R, 4157.3, 
+							   delta=0.1)
 	
 	def test_hf(self):
 		"""Test that the specific enthalpy of formation is derived."""
-		self.assertAlmostEqual(self.species.hf, -2.374e6)
-		self.assertAlmostEqual(self.species_with_Href.hf, None)
+		self.assertAlmostEqual(self.species.hf, -2.374e6, delta=1e3)
+		self.assertIs(self.species_with_Href.hf, None)
 
 	def test_toxml(self):
 		"""Test xml generated properly."""
@@ -105,35 +106,35 @@ class TestThermo(unittest.TestCase):
 		"""Tests the reference properties."""
 		self.assertEqual(self.thermo.T, 298.15)
 		self.assertEqual(self.thermo.interval, self.intervals[0])
-		self.assertEqual(self.thermo.Cp, 7.359e1)
-		self.assertEqual(self.thermo.cp, 1.669e3)
-		self.assertEqual(self.thermo.H, -1.047e5)
-		self.assertEqual(self.thermo.h, -2.374e6)
-		self.assertEqual(self.thermo.S, 2.703e2)
-		self.assertEqual(self.thermo.s, 6.130e3)
+		self.assertAlmostEqual(self.thermo.Cp, 7.359e1, delta=1e-2)
+		self.assertAlmostEqual(self.thermo.cp, 1.669e3, delta=1)
+		self.assertAlmostEqual(self.thermo.H, -1.047e5, delta=1e2)
+		self.assertAlmostEqual(self.thermo.h, -2.374e6, delta=1e3)
+		self.assertAlmostEqual(self.thermo.S, 2.703e2, delta=1e-1)
+		self.assertAlmostEqual(self.thermo.s, 6.130e3, delta=1)
 		# TODO: (external) use a (latex?) table to present the values
 
 	def test_interval_a(self):
 		"""Tests the interval attribute is updated correctly."""
 		self.thermo.T = 350.
 		self.assertEqual(self.thermo.interval, self.intervals[0])
-		self.assertEqual(self.thermo.Cp, 8.401e1)
-		self.assertEqual(self.thermo.cp, 1.905e3)
-		self.assertEqual(self.thermo.H, -1.006e5)
-		self.assertEqual(self.thermo.h, -2.281e6)
-		self.assertEqual(self.thermo.S, 2.829e2)
-		self.assertEqual(self.thermo.s, 6.416e3)
+		self.assertAlmostEqual(self.thermo.Cp, 8.401e1, delta=1e-2)
+		self.assertAlmostEqual(self.thermo.cp, 1.905e3, delta=1)
+		self.assertAlmostEqual(self.thermo.H, -1.006e5, delta=1e2)
+		self.assertAlmostEqual(self.thermo.h, -2.281e6, delta=1e3)
+		self.assertAlmostEqual(self.thermo.S, 2.829e2, delta=1e-1)
+		self.assertAlmostEqual(self.thermo.s, 6.416e3, delta=1)
 
 	def test_interval_b(self):
 		"""Tests the interval attribute is updated correctly."""
 		self.thermo.T = 1100.
 		self.assertEqual(self.thermo.interval, self.intervals[1])
-		self.assertEqual(self.thermo.Cp, 1.827e2)
-		self.assertEqual(self.thermo.cp, 4.143e3)
-		self.assertEqual(self.thermo.H, 5.664e3)
-		self.assertEqual(self.thermo.h, 1.284e5)
-		self.assertEqual(self.thermo.S, 4.344e2)
-		self.assertEqual(self.thermo.s, 9.851e3)
+		self.assertAlmostEqual(self.thermo.Cp, 1.827e2, delta=1e-1)
+		self.assertAlmostEqual(self.thermo.cp, 4.143e3, delta=1)
+		self.assertAlmostEqual(self.thermo.H, 5.664e3, delta=1)
+		self.assertAlmostEqual(self.thermo.h, 1.284e5, delta=1e2)
+		self.assertAlmostEqual(self.thermo.S, 4.344e2, delta=1e-1)
+		self.assertAlmostEqual(self.thermo.s, 9.851e3, delta=1)
 
 
 class TestTable(unittest.TestCase):

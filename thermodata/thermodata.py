@@ -250,6 +250,16 @@ class Thermo(object):
 		return self._T
 	@T.setter
 	def T(self, T):
+		# Validate temperature
+		if T < 0:
+			raise ValueError("Invalid temperature (T<0)")
+		elif T == 0:
+			raise ValueError("Invalid temperature (T==0)")
+		elif T < self.bounds[0]:
+			raise ValueError("Invalid temperature (T<T_min)")
+		elif T > self.bounds[1]:
+			raise ValueError("Invalid temperature (T>T_max)")
+
 		self._T = T
 		self._select_interval(T)
 
