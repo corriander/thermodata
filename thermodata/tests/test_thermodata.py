@@ -136,5 +136,49 @@ class TestThermo(unittest.TestCase):
 		self.assertEqual(self.thermo.s, 9.851e3)
 
 
+class TestTable(unittest.TestCase):
+	"""Tests a range of species properties in tabular form."""
+	# NOTE: Species with a single datum are not handled by ThermoBuild
+	def setUp(self):
+		# Define the test species
+		species = ('CO2', 'C3H8', 'In(cr)', 'Air')
+		db = ChemDB().select(species)
+		species = [db[s] for s in species]
+
+		# Generate the tables
+		self.table = [
+			Table((200, 298.15, 500, 1000, 3000, 6000, 10000, 20000),
+				  species[0]),
+			Table((200, 298.15, 500, 1000, 3000, 6000), species[1]),
+			Table((100, 298.15, 400), species[2]),
+			Table((200, 298.15, 500, 1000, 3000, 6000), species[3])
+			]
+
+	def fetch_table(self, species):
+		"""Utility function to fetch the table being tested."""
+		fname = 'table{}.txt'.format(species)
+		path = os.path.join(os.path.dirname(__file__), 'data', fname)
+		with open(path, 'r') as f: return f.read()
+
+	def test_species_0(self):
+		"""Test a gaseous reactant/product with 3 regular intervals"""
+		reference_table = self.fetch_table(table[0].species.name)
+		self.assertEqual(self.table[0].formatted(), reference_table)
+
+	def test_species_1(self):
+		"""Test a gaseous reactant/product with 2 regular intervals"""
+		reference_table = self.fetch_table(table[1].species.name)
+		self.assertEqual(self.table[1].formatted(), reference_table)
+
+	def test_species_2(self):
+		"""Test a condensed species with non-standard breakpoints."""
+		reference_table = self.fetch_table(table[2].species.name)
+		self.assertEqual(self.table[2].formatted(), reference_table)
+
+	def test_species_3(self):
+		"""Test a regular reactant"""
+		reference_table = self.fetch_table(table[3].species.name)
+		self.assertEqual(self.table[3].formatted(), reference_table)
+
 if __name__ == '__main__':
 	unittest.main()
