@@ -63,7 +63,7 @@ class TestThermo(unittest.TestCase):
 
 	def test_bounds (self):
 		"""Test that the absolute bounds to the data are determined"""
-		self.assertEqual(self.thermo.bounds, (200., 6000.))
+		self.assertEqual(self.thermo.bounds, (200.0, 6000.0))
 
 	def test_default_T(self):
 		"""Tests that the default temperature is assigned on init"""
@@ -76,7 +76,7 @@ class TestThermo(unittest.TestCase):
 		
 		"""
 		self.assertRaises(ValueError, 
-						  lambda t: self.thermo.T = t,
+						  lambda t: self.thermo.__setattr__('T', t),
 						  -0.1)
 	
 	def test_assign_zero_T(self):
@@ -86,25 +86,25 @@ class TestThermo(unittest.TestCase):
 		
 		"""
 		self.assertRaises(ValueError,
-						  lambda t: self.thermo.T = t,
+						  lambda t: self.thermo.__setattr__('T', t),
 						  0.0)
 
 	def test_assign_subbound_T(self):
 		"""Tests an exception is raised when T << T_min,species"""
 		self.assertRaises(ValueError,
-						  lambda t: self.thermo.T = t,
+						  lambda t: self.thermo.__setattr__('T', t),
 						  0.1)
 
 	def test_assign_superbound_T(self):
 		"""Tests a ValueError is raised when T >> T_max,species"""
 		self.assertRaises(ValueError,
-						  lambda t: self.thermo.T = t,
+						  lambda t: self.thermo.__setattr__('T', t),
 						  30000.0)
 	
 	def test_assign_reference_T(self):
 		"""Tests the reference properties."""
 		self.assertEqual(self.thermo.T, 298.15)
-		self.assertEqual(self.thermo.interval, test_gas.intervals[0])
+		self.assertEqual(self.thermo.interval, self.intervals[0])
 		self.assertEqual(self.thermo.Cp, 7.359e1)
 		self.assertEqual(self.thermo.cp, 1.669e3)
 		self.assertEqual(self.thermo.H, -1.047e5)
@@ -116,7 +116,7 @@ class TestThermo(unittest.TestCase):
 	def test_interval_a(self):
 		"""Tests the interval attribute is updated correctly."""
 		self.thermo.T = 350.
-		self.assertEqual(self.thermo.interval, test_gas.intervals[0])
+		self.assertEqual(self.thermo.interval, self.intervals[0])
 		self.assertEqual(self.thermo.Cp, 8.401e1)
 		self.assertEqual(self.thermo.cp, 1.905e3)
 		self.assertEqual(self.thermo.H, -1.006e5)
@@ -127,13 +127,14 @@ class TestThermo(unittest.TestCase):
 	def test_interval_b(self):
 		"""Tests the interval attribute is updated correctly."""
 		self.thermo.T = 1100.
-		self.assertEqual(self.thermo.interval, test_gas.intervals[1])
+		self.assertEqual(self.thermo.interval, self.intervals[1])
 		self.assertEqual(self.thermo.Cp, 1.827e2)
 		self.assertEqual(self.thermo.cp, 4.143e3)
 		self.assertEqual(self.thermo.H, 5.664e3)
 		self.assertEqual(self.thermo.h, 1.284e5)
 		self.assertEqual(self.thermo.S, 4.344e2)
 		self.assertEqual(self.thermo.s, 9.851e3)
+
 
 if __name__ == '__main__':
 	unittest.main()
