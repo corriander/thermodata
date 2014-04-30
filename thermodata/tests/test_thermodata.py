@@ -1,4 +1,6 @@
 import unittest
+import os
+import re
 import collections
 from ..thermodata import Interval, Species, Thermo, ChemDB, Table
 
@@ -10,8 +12,9 @@ class TestSpecies(unittest.TestCase):
 
 	def test_M(self):
 		"""Test that M (molar mass) is derived from Mr correctly."""
-		self.assertEqual(self.species.M, 0.0441, delta=0.0001)
-		self.assertEqual(self.species_with_Href.M, 0.002, delta=0.0001)
+		self.assertAlmostEqual(self.species.M, 0.0441, delta=0.0001)
+		self.assertAlmostEqual(self.species_with_Href.M, 0.002, 
+							   delta=0.0001)
 	
 	def test_R(self):
 		"""Test that R (spec. gas constant) is derived correctly."""
@@ -89,18 +92,20 @@ class TestThermo(unittest.TestCase):
 		self.assertRaises(ValueError,
 						  lambda t: self.thermo.__setattr__('T', t),
 						  0.0)
+	# TODO: This functionality is currently on hold, default
+	# temperature may not be suitable for some species temperature
+	# bounds.
+	#def test_assign_subbound_T(self):
+	#	"""Tests an exception is raised when T << T_min,species"""
+	#	self.assertRaises(ValueError,
+	#					  lambda t: self.thermo.__setattr__('T', t),
+	#					  0.1)
 
-	def test_assign_subbound_T(self):
-		"""Tests an exception is raised when T << T_min,species"""
-		self.assertRaises(ValueError,
-						  lambda t: self.thermo.__setattr__('T', t),
-						  0.1)
-
-	def test_assign_superbound_T(self):
-		"""Tests a ValueError is raised when T >> T_max,species"""
-		self.assertRaises(ValueError,
-						  lambda t: self.thermo.__setattr__('T', t),
-						  30000.0)
+	#def test_assign_superbound_T(self):
+	#	"""Tests a ValueError is raised when T >> T_max,species"""
+	#	self.assertRaises(ValueError,
+	#					  lambda t: self.thermo.__setattr__('T', t),
+	#					  30000.0)
 	
 	def test_assign_reference_T(self):
 		"""Tests the reference properties."""
@@ -143,7 +148,8 @@ class TestTable(unittest.TestCase):
 	def setUp(self):
 		# Define the test species
 		species = ('CO2', 'C3H8', 'In(cr)', 'Air')
-		db = ChemDB().select(species)
+		db = ChemDB()
+		db.select(species)
 		species = [db[s] for s in species]
 
 		# Generate the tables
@@ -154,38 +160,65 @@ class TestTable(unittest.TestCase):
 			Table((100, 298.15, 400), species[2]),
 			Table((200, 298.15, 500, 1000, 3000, 6000), species[3])
 			]
+		self.spaces = re.compile(r'[ \t]+')
 
 	def fetch_table(self, species):
 		"""Utility function to fetch the table being tested."""
 		fname = 'table{}.txt'.format(species)
 		path = os.path.join(os.path.dirname(__file__), 'data', fname)
-		with open(path, 'r') as f: return f.read()
+		with open(path, 'r') as f: 
+			return self.spaces.sub('  ', f.read().rstrip('\n'))
+
+	def normalise_native_table(self, table):
+		"""Helper function to normalise the format of tables."""
+		table = '\n'.join(table.formatted().split('\n')[3:])
+		return self.spaces.sub('  ', table)
 
 	def test_species_0(self):
 		"""Test a gaseous reactant/product with 3 regular intervals"""
-		reference_table = self.fetch_table(table[0].species.name)
-		self.assertEqual(self.table[0].formatted(), reference_table)
+		reference_table = self.fetch_table(self.table[0].species.name)
+		table = self.normalise_native_table(self.table[0])
+		print table
+		print ''
+		print reference_table
+		self.assertEqual(table, reference_table)
 
 	def test_species_1(self):
 		"""Test a gaseous reactant/product with 2 regular intervals"""
-		reference_table = self.fetch_table(table[1].species.name)
-		self.assertEqual(self.table[1].formatted(), reference_table)
+		reference_table = self.fetch_table(self.table[1].species.name)
+		table = self.normalise_native_table(self.table[1])
+		print table
+		print ''
+		print reference_table
+		self.assertEqual(table, reference_table)
 
 	def test_species_2(self):
 		"""Test a condensed species with non-standard breakpoints."""
-		reference_table = self.fetch_table(table[2].species.name)
-		self.assertEqual(self.table[2].formatted(), reference_table)
+		reference_table = self.fetch_table(self.table[2].species.name)
+		table = self.normalise_native_table(self.table[2])
+		print table
+		print ''
+		print reference_table
+		self.assertEqual(table, reference_table)
 
 	def test_species_3(self):
 		"""Test a regular reactant"""
-		reference_table = self.fetch_table(table[3].species.name)
-		self.assertEqual(self.table[3].formatted(), reference_table)
+		reference_table = self.fetch_table(self.table[3].species.name)
+		table = self.normalise_native_table(self.table[3])
+		print table
+		print ''
+		print reference_table
+		self.assertEqual(table, reference_table)
 
 
 class TestChemDB(unittest.TestCase):
 	# TODO test select for single and then multiple species. Check
 	# identity (this catches Species parsing integrity!) 
-	pass
+	def setUp(self):
+		self.db = ChemDB()
+
+	def test_dummy(self):
+		pass
 
 
 if __name__ == '__main__':
