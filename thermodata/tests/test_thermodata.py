@@ -180,5 +180,12 @@ class TestTable(unittest.TestCase):
 		reference_table = self.fetch_table(table[3].species.name)
 		self.assertEqual(self.table[3].formatted(), reference_table)
 
+
+class TestChemDB(unittest.TestCase):
+	# TODO test select for single and then multiple species. Check
+	# identity (this catches Species parsing integrity!) 
+	pass
+
+
 if __name__ == '__main__':
 	unittest.main()
