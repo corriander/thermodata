@@ -88,14 +88,23 @@ class ChemDB(dict):
 	def __init__(self):
 		self._thermoinp_load()
 	
-	def select(self, names):
+	def select(self, species=None):
 		"""Generate database by a list of species names."""
-		for name in names:
+		if species is None:
+			# Select all species
+			self.update(self._source_dict)
+			return
+
+		if isinstance(species, basestring):
+			# Single species
+			species = (species,)
+
+		for name in species:
 			try:
 				self.__setitem__(name, self._source_dict[name])
-			except KeyError as e:
-				msg = "{} is not in the source database.".format(name)
-				raise Exception(msg)
+			except KeyError:
+				errmsg = "{} not in source database.".format(name)
+				raise Exception(errmsg)
 
 	def _thermoinp_load(self):
 		# Database loader. Loads the contents of `thermo.inp` into a
@@ -212,6 +221,12 @@ class Species(object):
 		# mass M : Molar mass, kg/mol
 		self.R = CONST.R_CEA / self.M
 
+	def __eq__(self, other):
+		return (self.name == other.name and
+				self.Mr == other.Mr and
+				self.Hf == other.Hf and
+				self.thermo == other.thermo)
+
 
 class Thermo(object):
 	"""Thermodynamic state functions (standard-state, P=100 kPa).
@@ -250,6 +265,18 @@ class Thermo(object):
 		return self._T
 	@T.setter
 	def T(self, T):
+		# Validate temperature
+		if T < 0:
+			raise ValueError("Invalid temperature (T<0)")
+		elif T == 0:
+			raise ValueError("Invalid temperature (T==0)")
+		# TODO: Make this work where the default T=298.15 is out of
+		# bounds.
+		#elif T < self.bounds[0]:
+			#raise ValueError("Invalid temperature (T<T_min)")
+		#elif T > self.bounds[1]:
+			#raise ValueError("Invalid temperature (T>T_max)")
+
 		self._T = T
 		self._select_interval(T)
 
@@ -316,7 +343,7 @@ class Thermo(object):
 			raise ValueError("Temperature out of bounds")
 		self.interval = None
 		for interval in self.intervals:
-			if T < interval.bounds[1]:
+			if T <= interval.bounds[1]:
 				self.interval = interval
 				break		
 	
@@ -334,6 +361,10 @@ class Thermo(object):
 			coeffs.text = '{!s}'.format(interval.coeffs)
 			consts = etree.SubElement(subnode, 'integ_constants')
 			consts.text = '{!s}'.format(interval.integration_consts)
+
+	def __eq__(self, other):
+		return (self.T == other.T and
+			    self.Cp == other.Cp)
 
 
 class Table(object):
