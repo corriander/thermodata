@@ -1,7 +1,47 @@
-"""Extended interface to  the NASA Glenn thermodynamic database
+"""Extended interface to the NASA Glenn thermodynamic database.
 
 This module is built on top of the `thermoinp` module (which serves to
 provide low-level access to the database).
+
+The main point of access to chemical species data is the class ChemDB.
+ChemDB loads the complete database from the source file on
+instantiation. Subsets are created via the `select` method by
+specifying a list/tuple of chemical species names.
+
+	>>> db = ChemDB()
+	>>> db.select(('Air', 'N2', 'O2', 'Ar', 'CO2'))
+
+The current database view can be written to XML via the `write`
+method. Where no path is specified, the serialised data is written to
+STDOUT.
+
+The module also provides a Table class for generating tabulated data.
+
+	>>> temperature_range = (200, 298.15, 500, 2000) 
+	>>> table = Table(temperature_range, db['Air'])
+
+The `formatted` method which returns a formatted string:
+
+	>>> formatted_table = table.formatted()
+
+Key limitations:
+
+  - Currently tables use molar units (J/mol or J/mol-K as
+	appropriate).
+  - State functions in different units are accessed via distinct
+	properties. This is likely to change.
+  - Database selections require the full chemical species name
+	(basically it's necessary to know what you are looking for). The
+	`thermoinp` module provides a prefix-based lookup however, and
+	there's always the source data file.
+  - Only a limited amount of species data is currently represented at
+	this level.
+  - XML structure is a WIP.
+  - Loading from XML (or other database formats) is not supported at
+  	this time.
+  - Species and Thermo are not intended for direct instantiation but
+  	they will probably get subclassed. Generally the API (as loosely
+	defined as it is) is a WIP and dependent on emerging requirements.
 
 """
 import sys
@@ -20,14 +60,51 @@ Interval = collections.namedtuple('Interval',
 
 
 class ChemDB(dict):
-	"""Chemical database."""
+	"""Chemical database with dict-like access.
+
+	This class loads the source database in the background on
+	isntantiation and then provides a mechanism for selecting species
+	from the source to add to the current "view". 
+	
+		>>> db = ChemDB()
+		>>> db
+		{}
+		>>> db.select(('Air',)) # NOTE: names passed as sequence
+		>>> air = db['Air']
+
+	The method will raise an exception if the chemical species does
+	not exist in the source:
+
+		>>> db.select(('Adamantium',))
+		Traceback (most recent call last):
+			...
+		Exception: Adamantium is not in the source database.
+
+	The current database entries can be written to `stdout` via the
+	`write` method or to a (new) file by specifying the path as an
+	argument.
+
+	"""
 	def __init__(self):
 		self._thermoinp_load()
 	
-	def select(self, names):
+	def select(self, species=None):
 		"""Generate database by a list of species names."""
-		for name in names:
-			self.__setitem__(name, self._source_dict[name])
+		if species is None:
+			# Select all species
+			self.update(self._source_dict)
+			return
+
+		if isinstance(species, basestring):
+			# Single species
+			species = (species,)
+
+		for name in species:
+			try:
+				self.__setitem__(name, self._source_dict[name])
+			except KeyError:
+				errmsg = "{} not in source database.".format(name)
+				raise Exception(errmsg)
 
 	def _thermoinp_load(self):
 		# Database loader. Loads the contents of `thermo.inp` into a
@@ -62,17 +139,18 @@ class ChemDB(dict):
 
 		root = self.toxml()
 		_indentxml(root)
-		with f:
-			etree.ElementTree(root).write(f,
-										  xml_declaration=True,
-										  encoding='utf-8',
-										  method='xml')
+		etree.ElementTree(root).write(f,
+									  xml_declaration=True,
+									  encoding='utf-8',
+									  method='xml')
+		if f is not sys.stdout:
+			f.close()
 
-	@staticmethod
-	def _map_species(source):
+	def _map_species(self, source):
 		# map thermoinp.Species instance data to Species instances.
 		try:
-			intervals = [_map_interval(i) for i in source.intervals]
+			intervals = [self._map_interval(i)
+						 for i in source.intervals]
 		except TypeError:
 			intervals = None
 	
@@ -86,7 +164,16 @@ class ChemDB(dict):
 
 
 class Species(object):
-	"""Chemical species"""
+	"""Chemical species.
+	
+	A chemical species is a substance of known composition in a
+	defined phase and, if an ion, with a specified charge.
+	
+	Species can be instantiated directly, but is generally
+	instantiated in the database loading during the instantiation of
+	ChemDB.
+	
+	"""
 	def __init__(self, name, rel_molar_mass, formation_enthalpy,
 				 intervals=None):
 		self.name = name
@@ -95,7 +182,7 @@ class Species(object):
 
 		# Derived attributes:
 		self.M = CONST.M * self.Mr
-		self.R = CONST.R_CEA / self.M
+		self._calculate_specific_gas_constant()
 		try:
 			self.hf = self.Hf / self.M
 		except TypeError:
@@ -128,10 +215,44 @@ class Species(object):
 							 )
 		Hf.text = str(self.Hf)
 		self.thermo.toxml(node)
+	
+	def _calculate_specific_gas_constant(self):
+		# Returns the specific gas constant as a function of molar
+		# mass M : Molar mass, kg/mol
+		self.R = CONST.R_CEA / self.M
+
+	def __eq__(self, other):
+		return (self.name == other.name and
+				self.Mr == other.Mr and
+				self.Hf == other.Hf and
+				self.thermo == other.thermo)
 
 
 class Thermo(object):
-	"""Thermodynamic state functions (standard-state, P=100 kPa)."""
+	"""Thermodynamic state functions (standard-state, P=100 kPa).
+	
+	Temperature, T, is used as the free variable here. On setting the
+	temperature property state functions are evaluated and stored in
+	attributes. In the event no intervals are provided, this
+	evaluation process does not happen (the necessary data is not
+	available).
+
+	The following properties are available for standard-state
+	conditions (specified temperature and standard pressure, 
+	P =	100 kPa):
+
+	  - T      : Temperature
+	  - Cp, cp : Standard-state heat capacity at constant pressure 
+	  - H, h   : Standard-state enthalpy
+	  - S, s   : Standard-state entropy
+
+	Note that upper-case and lower-case properties are in units of
+	amount-of-substance (/mol) and mass (/kg) respectively.
+	
+	Like Species, Thermo can be instantiated directly but is generally
+	handled during the ChemDB database loading.
+		
+	"""
 	def __init__(self, species, intervals, T=298.15):
 		self.species = species
 		self.intervals = intervals
@@ -144,6 +265,18 @@ class Thermo(object):
 		return self._T
 	@T.setter
 	def T(self, T):
+		# Validate temperature
+		if T < 0:
+			raise ValueError("Invalid temperature (T<0)")
+		elif T == 0:
+			raise ValueError("Invalid temperature (T==0)")
+		# TODO: Make this work where the default T=298.15 is out of
+		# bounds.
+		#elif T < self.bounds[0]:
+			#raise ValueError("Invalid temperature (T<T_min)")
+		#elif T > self.bounds[1]:
+			#raise ValueError("Invalid temperature (T>T_max)")
+
 		self._T = T
 		self._select_interval(T)
 
@@ -210,7 +343,7 @@ class Thermo(object):
 			raise ValueError("Temperature out of bounds")
 		self.interval = None
 		for interval in self.intervals:
-			if T < interval.bounds[1]:
+			if T <= interval.bounds[1]:
 				self.interval = interval
 				break		
 	
@@ -229,9 +362,33 @@ class Thermo(object):
 			consts = etree.SubElement(subnode, 'integ_constants')
 			consts.text = '{!s}'.format(interval.integration_consts)
 
+	def __eq__(self, other):
+		return (self.T == other.T and
+			    self.Cp == other.Cp)
+
 
 class Table(object):
-	"""Tabulated data."""
+	"""Tabulated data.
+	
+	Generates tabulated state function values for a specified
+	temperature range and chemical species.
+
+		>>> db = ChemDB()
+		>>> db.select(('Air',))
+		>>> air = db['Air']
+		>>> T_range = (200, 500, 2000)
+		>>> table = Table(T_range, air)
+		>>> str(table)
+		'Property table: T = 200-2000 K, 3 intervals (moles)'
+		>>> print table.formatted()
+		         T        Cp    H-H298         S         H
+		         K   J/mol-K    kJ/mol   J/mol-K    kJ/mol
+		--------------------------------------------------
+		  200         29.034    -2.852   187.221    -2.978
+		  500         29.821     5.932   214.001     5.807
+		  2000        36.216    56.595   259.764    56.470
+	
+	"""
 	def __init__(self, temperature_range, species):
 		self.Trange = temperature_range
 		self.species = species
@@ -256,12 +413,13 @@ class Table(object):
 	
 	def __str__(self):
 		# print a table summary
-		Trange = 'T = {}-{} K, {} intervals'.format(Trange[0],
-													Trange[1],
-													len(Trange)
-													)
+		Trange = self.Trange
+		T_str = 'T = {}-{} K, {} intervals'.format(Trange[0],
+												   Trange[-1],
+												   len(Trange)
+												   )
 		units = '(moles)'
-		return 'Property table: {} {}'.format(Trange, units)
+		return 'Property table: {} {}'.format(T_str, units)
 
 	def formatted(self):
 		"""Format the table for printing/writing to file."""
@@ -269,7 +427,7 @@ class Table(object):
 		header = ''.join(spec.format(field) for field in self.header)
 		units = ''.join(spec.format(units) for units in self.units)
 		fspec = '{:>10.3f}' 
-		table = [header, units, ''*len(header)]
+		table = [header, units, '-'*len(header)]
 		for row in self.body:
 			row = ('  {:<8}'.format(row[0]),
 				   ''.join(fspec.format(value) for value in row[1:])
@@ -322,11 +480,6 @@ def _dimless_entropy(T, a, b):
 	        )
 
 
-def _specific_gas_constant(M):
-	# Returns the specific gas constant as a function of molar mass
-	# M : Molar mass, kg/mol
-	return CONST.R_CEA / M
-
 def _indentxml(elem, level=0):
 	# Indent XML string representation of elements;
 	# http://effbot.org/zone/element-lib.htm#prettyprint
@@ -344,3 +497,7 @@ def _indentxml(elem, level=0):
 	else:
 		if level and (not elem.tail or not elem.tail.strip()):
 			elem.tail = i
+
+if __name__ == '__main__':
+	import doctest
+	doctest.testmod()

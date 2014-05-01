@@ -72,7 +72,7 @@ def parse():
 			for k, lst in species_categories.items()
 			}
 
-def lookup(prefix, form='parsed'):
+def lookup(prefix, form='parsed', exact=False):
 	"""Locate species with a matching name prefix.
 
 	This will search the database and return species datasets where
@@ -106,28 +106,47 @@ def lookup(prefix, form='parsed'):
 	module.
 
 	"""
+	if exact:
+		pattern = re.compile(r'{}$'.format(re.escape(prefix)))
+	else:
+		pattern = re.compile(r'{}'.format(re.escape(prefix)))
+
 	if form == 'parsed':
+		# parse the database file into Species objects, set up the
+		# match function to check against the species name.
 		source = parse()
 		def match(species):
-			if species.name.startswith(prefix): return True
+			return pattern.match(species.name)
+
 	elif form == 'unparsed':
+		# split the database file into per-species strings, set up the
+		# match function to check against the name region of the
+		# string (with trailing whitespace stripped)
 		source = _read_species()
 		def match(species):
-			if species.startswith(prefix): return True
+			name, __ = _parse_first_record(species.split('\n')[0])
+			return pattern.match(name)
+
 	else:
 		raise ValueError("Argument form='{!s}' invalid".format(form))
 
-	results = dict.fromkeys(source)
+	results = dict.fromkeys(source)	# results container
 	for category in results:
+		# keep track of matches
 		matches = [species 
 				   for species in source[category]
 				   if match(species)
 				   ]
-		if matches: results[category] = matches
+		if matches:
+			# if there are matches, add them to results
+			results[category] = matches
+
 	return results
 
 
-def create_subset(prefix=None, category=None):
+def create_subset(search_strings=None, 
+				  filter_category=None,
+				  exact=False):
 	"""Syntactically valid subset filtered by search term or category.
 	
 	The prefix is passed to lookup() and exhibits the same behaviour.
@@ -143,7 +162,11 @@ def create_subset(prefix=None, category=None):
 
 	To output all reactant species:
 
-		>>> string = create_subset(category='reactants')
+		>>> string = create_subset(filter_category='reactants')
+
+	Note that the lookup is based on matching a species name with a
+	prefix. The exact parameter can be specified to match whole name
+	strings.
 	
 	"""
 
@@ -151,8 +174,8 @@ def create_subset(prefix=None, category=None):
 	# categories. This is quicker than pulling them from the source
 	# and easier than passing this data around.
 	header = ['{:<80s}'.format('thermo')]
-	intervals = '    200.00   1000.00   6000.00  20000.     9/09/04'
-	header.append('{:<80s}'.format(intervals))
+	intervals = '   200.000  1000.000  6000.000 20000.000   9/09/04'
+	header.append(intervals)
 	delimiters = ('\n'.join(header),
 				  '',
 				  '{:<80s}'.format('END PRODUCTS'),
@@ -160,36 +183,65 @@ def create_subset(prefix=None, category=None):
 				  )
 
 	# empty list for blocks of species, map category to an index
-	species = [None] * 3 # 3 categories of species, default empty str
+	matching_species = [[], [], []] # 3 categories of species
 	index = {'gas_products' : 0,
 			 'condensed_products' : 1,
 			 'reactants' : 2
 			 }
 
-	if (prefix, category) == (None, None):
+	if (search_strings, filter_category) == (None, None):
 		# there's no point handling this combination
-		raise ValueError("No subset selected")
+		raise ValueError("No subset criteria selected")
 
-	elif prefix is None:
+	elif search_strings is None:
 		# category of species can be obtained directly as a string
-		string = _read_categories()[category]
-		species[index[category]] = string
+		string = _read_categories()[filter_category]
+		matching_species[index[filter_category]] = string
 
-	elif category is None:
-		# lookup returns dict, insert not None values into species
-		d = lookup(prefix, form='unparsed')
-		for key, value in d.items():
-			if value is not None: 
-				species[index[key]] = '\n'.join(value)
 	else:
-		# if a filtered lookup returns a list, add joined contents
-		l = lookup(prefix, form='unparsed')[category]
-		if l is not None:
-			matches[index[category]] = '\n'.join(l)
+		# search_strings is defined. category might be.
+		if isinstance(search_strings, basestring):
+			search_strings = [search_strings]
+		for string in search_strings:
+			category_dict = lookup(string, 'unparsed', exact)
+
+			if filter_category is not None:
+				# We can filter the lookup results, giving us a list.
+				# Reference the correct element of the
+				# matching_species container
+				dataset_list = category_dict[filter_category]
+				output_list = matching_species[index[filter_category]]
+				if dataset_list is not None:
+					# Extend the list with new datasets.
+					output_list.extend([dataset
+										for dataset in dataset_list
+										if dataset not in output_list]
+									   )
+				continue
+
+			# ^^ continue means we're only here if category is not
+			# specified
+			for category, dataset_list in category_dict.items():
+				# Start by referencing the appropriate element of the
+				# matching_species container
+				output_list = matching_species[index[category]]
+				if dataset_list is not None:
+					# Extend the list with new datasets
+					output_list.extend([dataset
+										for dataset in dataset_list
+										if dataset not in output_list]
+									   )
+
+		# All search strings have been looked up, matching_species is
+		# a list of three lists containing matching datasets. These
+		# need processing.
+		for i, list_ in enumerate(matching_species):
+			sorted_datasets = sorted(list_)
+			matching_species[i] = '\n'.join(sorted_datasets)
 
 	subset = [None] * 7 # len(delimiters) + len(species)
 	subset[::2] = delimiters # populate even with delimiters
-	subset[1::2] = species # fill odd indices with matches
+	subset[1::2] = matching_species # fill odd indices with matches
 
 	return '\n'.join(filter(None, subset))
 
@@ -297,8 +349,7 @@ def _parse_species(records):
 	head, body, tail = records[0], records[1], records[2:]
 
 	# Parse the name & comments from the header 
-	name = head[:18].rstrip()
-	comments = head[18:].rstrip()
+	name, comments = _parse_first_record(head)
 
 	# Parse the non-polynomial data
 	nintervals = int(body[1])
@@ -324,7 +375,7 @@ def _parse_species(records):
 	else:
 		h_formation = intervals = None
 		h_assigned = refenthalpy
-		T_reference = tail[0].split()[0] # grab the first word
+		T_reference = float(tail[0].split()[0]) # grab the first word
 
 	return Species(name,
 				   comments,
@@ -338,6 +389,10 @@ def _parse_species(records):
 				   T_reference,
 				   intervals)
 
+def _parse_first_record(record):
+	# Takes the first record of a species dataset and returns the name
+	# and comment fields
+	return record[:18].rstrip(), record[18:].rstrip()
 
 # --------------------------------------------------------------------
 #
