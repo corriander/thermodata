@@ -309,7 +309,7 @@ def _pprint_refcode(code):
 #
 # --------------------------------------------------------------------
 
-_Species = collections.namedtuple('ChemicalSpecies',
+_Species = collections.namedtuple('Species',
                                   ['name',
                                    'comments',
                                    'nintervals',

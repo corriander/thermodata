@@ -154,8 +154,7 @@ class ChemDB(dict):
         except TypeError:
             intervals = None
 
-        return Species(source.name, source.molwt, source.h_formation,
-                       intervals)
+        return Species.from_source(source, intervals)
 
     @staticmethod
     def _map_interval(source):
@@ -195,7 +194,6 @@ class Species(object):
     Species can be instantiated directly, but is generally
     instantiated in the database loading during the instantiation of
     ChemDB.
-
     """
     def __init__(self, name, rel_molar_mass, formation_enthalpy,
                  intervals=None):
@@ -249,6 +247,14 @@ class Species(object):
                 self.Mr == other.Mr and
                 self.Hf == other.Hf and
                 self.thermo == other.thermo)
+
+    @classmethod
+    def from_source(cls, inp, intervals):
+        """Generate Species instance from a thermoinp.Species."""
+        inst = cls(inp.name, inp.molwt, inp.h_formation,
+                   intervals)
+        inst.phase = inp.phase
+        return inst
 
 
 class Thermo(object):
