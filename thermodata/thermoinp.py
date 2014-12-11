@@ -200,7 +200,7 @@ def create_subset(search_strings=None,
 
     else:
         # search_strings is defined. category might be.
-        if isinstance(search_strings, basestring):
+        if isinstance(search_strings, str):
             search_strings = [search_strings]
         for string in search_strings:
             category_dict = lookup(string, 'unparsed', exact)
@@ -358,7 +358,7 @@ def _parse_species(records):
     # e.g. 'C   1.00O  2.00   0.00   0.00   0.00' -> 'C:1.00 O:2.00'
     formula = ' '.join([
         '{!s}:{!s}'.format(body[i:i+2].strip(), body[i+2:i+8].strip())
-        for i in xrange(10, 50, 8)
+        for i in range(10, 50, 8)
         ]).replace(' :0.00', '')
     phase = int(body[51])
     molwt = float(body[52:65])
@@ -371,7 +371,7 @@ def _parse_species(records):
         h_formation = refenthalpy
         # each interval is described by three records
         intervals = [_parse_interval(tail[i:i+3])
-                     for i in xrange(0, len(tail), 3)]
+                     for i in range(0, len(tail), 3)]
     else:
         h_formation = intervals = None
         h_assigned = refenthalpy
@@ -431,8 +431,8 @@ def _double_array_to_float(string):
     # Parse a string a containing 16-char Fortran-style doubles into
     # a list of floats
     float_strings = [string[i:i+16].replace('D','e') # Pythonify
-                     for i in xrange(0, len(string), 16)]
-    return map(float, float_strings)
+                     for i in range(0, len(string), 16)]
+    return list(map(float, float_strings))
 
 def _parse_interval(records):
     # Parse records containing a temperature interval/polynomial spec.

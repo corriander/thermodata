@@ -95,7 +95,7 @@ class ChemDB(dict):
             self.update(self._source_dict)
             return
 
-        if isinstance(species, basestring):
+        if isinstance(species, str):
             # Single species
             species = (species,)
 
