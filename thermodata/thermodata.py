@@ -49,7 +49,7 @@ from math import log
 import collections
 from xml.etree import ElementTree as etree
 
-import thermodata.constants as CONST
+import thermodata.constants as constants
 import thermodata.thermoinp as thermoinp
 
 
@@ -181,7 +181,7 @@ class Species(object):
         self.Hf = formation_enthalpy
 
         # Derived attributes:
-        self.M = CONST.M * self.Mr
+        self.M = constants.M * self.Mr
         self._calculate_specific_gas_constant()
         try:
             self.hf = self.Hf / self.M
@@ -215,11 +215,11 @@ class Species(object):
                              )
         Hf.text = str(self.Hf)
         self.thermo.toxml(node)
-    
+
     def _calculate_specific_gas_constant(self):
         # Returns the specific gas constant as a function of molar
         # mass M : Molar mass, kg/mol
-        self.R = CONST.R_CEA / self.M
+        self.R = constants.R_CEA / self.M
 
     def __eq__(self, other):
         return (self.name == other.name and
@@ -281,7 +281,7 @@ class Thermo(object):
         self._select_interval(T)
 
         # Localise variables for repeated access
-        Ru = CONST.R_CEA
+        Ru = constants.R_CEA
         R = self.species.R
         if self.interval:
             a = self.interval.coeffs
