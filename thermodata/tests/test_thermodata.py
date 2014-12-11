@@ -2,7 +2,8 @@ import unittest
 import os
 import re
 import collections
-from ..thermodata import Interval, Species, Thermo, ChemDB, Table
+from thermodata.thermodata import Interval, Species, Thermo, ChemDB, Table
+from thermodata.thermodata import thermoinp
 
 class TestSpecies(unittest.TestCase):
     """Test Species instantiated w/ and w/o formation_enthalpy."""
@@ -13,15 +14,15 @@ class TestSpecies(unittest.TestCase):
     def test_M(self):
         """Test that M (molar mass) is derived from Mr correctly."""
         self.assertAlmostEqual(self.species.M, 0.0441, delta=0.0001)
-        self.assertAlmostEqual(self.species_with_Href.M, 0.002, 
+        self.assertAlmostEqual(self.species_with_Href.M, 0.002,
                                delta=0.0001)
-    
+
     def test_R(self):
         """Test that R (spec. gas constant) is derived correctly."""
         self.assertAlmostEqual(self.species.R, 188.6, delta=0.1)
-        self.assertAlmostEqual(self.species_with_Href.R, 4157.3, 
+        self.assertAlmostEqual(self.species_with_Href.R, 4157.3,
                                delta=0.1)
-    
+
     def test_hf(self):
         """Test that the specific enthalpy of formation is derived."""
         self.assertAlmostEqual(self.species.hf, -2.374e6, delta=1e3)
@@ -40,14 +41,14 @@ class TestThermo(unittest.TestCase):
         MockSpecies = collections.namedtuple('MockSpecies', 'R')
         # Propane as a reference species.
         self.species = MockSpecies(188.556)
-        self.intervals = [ 
+        self.intervals = [
             Interval((200.0, 1000.0),
                      (-2.433144337e+05,
-                       4.656270810e+03, 
+                       4.656270810e+03,
                       -2.939466091e+01,
                        1.188952745e-01,
                       -1.376308269e-04,
-                       8.814823910e-08, 
+                       8.814823910e-08,
                       -2.342987994e-11),
                      (-3.540335270e+04,
                        1.841749277e+02)
@@ -72,22 +73,22 @@ class TestThermo(unittest.TestCase):
     def test_default_T(self):
         """Tests that the default temperature is assigned on init"""
         self.assertEqual(self.thermo.T, 298.15)
-    
+
     def test_assign_negative_T(self):
         """Tests an exception is raised when T < 0.
-        
+
         T < 0 K is, by definition, invalid.
-        
+
         """
-        self.assertRaises(ValueError, 
+        self.assertRaises(ValueError,
                           lambda t: self.thermo.__setattr__('T', t),
                           -0.1)
-    
+
     def test_assign_zero_T(self):
         """Tests an exception is raised when T == 0.
-        
+
         T = 0 K can potentially cause singularity issues.
-        
+
         """
         self.assertRaises(ValueError,
                           lambda t: self.thermo.__setattr__('T', t),
@@ -106,7 +107,7 @@ class TestThermo(unittest.TestCase):
     #	self.assertRaises(ValueError,
     #					  lambda t: self.thermo.__setattr__('T', t),
     #					  30000.0)
-    
+
     def test_assign_reference_T(self):
         """Tests the reference properties."""
         self.assertEqual(self.thermo.T, 298.15)
@@ -166,7 +167,7 @@ class TestTable(unittest.TestCase):
         """Utility function to fetch the table being tested."""
         fname = 'table{}.txt'.format(species)
         path = os.path.join(os.path.dirname(__file__), 'data', fname)
-        with open(path, 'r') as f: 
+        with open(path, 'r') as f:
             return self.spaces.sub('  ', f.read().rstrip('\n'))
 
     def normalise_native_table(self, table):
@@ -179,7 +180,7 @@ class TestTable(unittest.TestCase):
         """Diagnostic method. Print row-by-row comparison."""
         table = table.split('\n')
         reference_table = reference_table.split('\n')
-        
+
         # Might as well throw an error if table structure
         # fundamentally different. Should be an edge case, but this
         # can be improved to provide further insight if necessary.
@@ -200,7 +201,7 @@ class TestTable(unittest.TestCase):
             if row != ref_row:
                 lsofstr.extend([row, ref_row, '\n'])
         return '\n'.join(lsofstr)
-        
+
 
     def test_species_0(self):
         """Test a gaseous reactant/product with 3 regular intervals"""
@@ -250,7 +251,7 @@ class TestChemDB(unittest.TestCase):
         self.methanol = Species('CH3OH(L)', 32.04186, -238910.000,
                 intervals=[
                     Interval((175.610, 390.0),
-                             (-1.302004763e6, 3.166984180e4, 
+                             (-1.302004763e6, 3.166984180e4,
                               -3.031242152e2, 1.602231130,
                               -4.594507340e-3, 6.990178310e-6,
                               -4.207388950e-9),
@@ -288,14 +289,14 @@ class TestChemDB(unittest.TestCase):
         silver_cryst = Species('Ag(cr)', 107.8682, 0.000, intervals=[
             Interval((200.0, 1235.080),
                      (-7.099236470e4, 7.254788020e2, 1.066518380e-1,
-                       5.529541550e-3, -4.425590850e-6, 
+                       5.529541550e-3, -4.425590850e-6,
                        2.091668120e-9, -3.888924460e-13),
                      (-4.614014260e3, 5.074216040)
                      )])
         potassium_chloride = Species('KCL', 74.5513, -214574.881,
                 intervals=[
                     Interval((200.0, 1000.0),
-                             (9.058351510e3, -2.456801212e2, 
+                             (9.058351510e3, -2.456801212e2,
                               5.680696190, -2.900127425e-3,
                               4.130983060e-6, -2.907340629e-9,
                               8.223850870e-13),

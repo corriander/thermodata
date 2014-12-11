@@ -41,7 +41,7 @@ def _read_categories():
 
 def _read_species():
     # Split the database into categorised lists of species.
-    
+
     # Returns a category-keyed dictionary of species-separated
     # content.  Each category is a list of species dataset strings.
     # The strings contain newline-delimited records containing
@@ -133,7 +133,7 @@ def lookup(prefix, form='parsed', exact=False):
     results = dict.fromkeys(source)	# results container
     for category in results:
         # keep track of matches
-        matches = [species 
+        matches = [species
                    for species in source[category]
                    if match(species)
                    ]
@@ -144,11 +144,11 @@ def lookup(prefix, form='parsed', exact=False):
     return results
 
 
-def create_subset(search_strings=None, 
+def create_subset(search_strings=None,
                   filter_category=None,
                   exact=False):
     """Syntactically valid subset filtered by search term or category.
-    
+
     The prefix is passed to lookup() and exhibits the same behaviour.
     For example, to create a subset containing the family of jet
     fuels:
@@ -167,7 +167,7 @@ def create_subset(search_strings=None,
     Note that the lookup is based on matching a species name with a
     prefix. The exact parameter can be specified to match whole name
     strings.
-    
+
     """
 
     # Recreate the delimiters, these can be interleaved with
@@ -200,7 +200,7 @@ def create_subset(search_strings=None,
 
     else:
         # search_strings is defined. category might be.
-        if isinstance(search_strings, basestring):
+        if isinstance(search_strings, str):
             search_strings = [search_strings]
         for string in search_strings:
             category_dict = lookup(string, 'unparsed', exact)
@@ -274,7 +274,7 @@ def _pprint_refcode(code):
         'c' : 'CODATA Key Values for Thermodynamics. Cox 1989',
         's' : 'Standard Reference Data: J.Phys.Chem.Ref.Data'
         }
-    months = ('', 'Jan', 'Feb', 'Mar', 'April', 'May', 'Jun', 
+    months = ('', 'Jan', 'Feb', 'Mar', 'April', 'May', 'Jun',
               'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec')
     expandyear = {'0' : '20'}
     regex = re.compile(r'\d.*')
@@ -283,7 +283,7 @@ def _pprint_refcode(code):
     reference = references.get(code[0])
     if code == 'g tpis':
         # Special case for C4
-        reference += '{!s}, {!s}'.format(reference, 
+        reference += '{!s}, {!s}'.format(reference,
                                          references.get('t'))
         return '{!s}, 0000'.format(reference)
 
@@ -348,7 +348,7 @@ def _parse_species(records):
     # split the records up
     head, body, tail = records[0], records[1], records[2:]
 
-    # Parse the name & comments from the header 
+    # Parse the name & comments from the header
     name, comments = _parse_first_record(head)
 
     # Parse the non-polynomial data
@@ -358,7 +358,7 @@ def _parse_species(records):
     # e.g. 'C   1.00O  2.00   0.00   0.00   0.00' -> 'C:1.00 O:2.00'
     formula = ' '.join([
         '{!s}:{!s}'.format(body[i:i+2].strip(), body[i+2:i+8].strip())
-        for i in xrange(10, 50, 8)
+        for i in range(10, 50, 8)
         ]).replace(' :0.00', '')
     phase = int(body[51])
     molwt = float(body[52:65])
@@ -371,7 +371,7 @@ def _parse_species(records):
         h_formation = refenthalpy
         # each interval is described by three records
         intervals = [_parse_interval(tail[i:i+3])
-                     for i in xrange(0, len(tail), 3)]
+                     for i in range(0, len(tail), 3)]
     else:
         h_formation = intervals = None
         h_assigned = refenthalpy
@@ -423,7 +423,7 @@ class Interval(_Interval):
       `deltah`    : Reference enthalpy value
       `coeff`     : Coefficients (len() == ncoeff)
       `const`     : Integration constants
-    
+
     """
     pass
 
@@ -431,8 +431,8 @@ def _double_array_to_float(string):
     # Parse a string a containing 16-char Fortran-style doubles into
     # a list of floats
     float_strings = [string[i:i+16].replace('D','e') # Pythonify
-                     for i in xrange(0, len(string), 16)]
-    return map(float, float_strings)
+                     for i in range(0, len(string), 16)]
+    return list(map(float, float_strings))
 
 def _parse_interval(records):
     # Parse records containing a temperature interval/polynomial spec.
@@ -446,13 +446,13 @@ def _parse_interval(records):
     exponents = tuple(float(n) for n in metadata[23:63].split())
     deltah = float(metadata[65:])
 
-    # parse records containing numerical strings 
+    # parse records containing numerical strings
     coeffs = _double_array_to_float(array1)
     coeffs.extend(_double_array_to_float(array2[:32]))
     coeffs = tuple(coeffs)
     consts = tuple(_double_array_to_float(array2[48:]))
 
-    return Interval(bounds, 
+    return Interval(bounds,
                     ncoeffs,
                     exponents,
                     deltah,
