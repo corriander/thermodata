@@ -3,9 +3,9 @@
 This module provides the following externally defined physical
 constants:
 
-	R     : Molar gas constant (sometimes universal or ideal), J/mol-K
-	R_CEA : Molar gas constant defined by Gordon and McBride
-	M	  : Molar mass constant, kg/mol 
+    R     : Molar gas constant (sometimes universal or ideal), J/mol-K
+    R_CEA : Molar gas constant defined by Gordon and McBride
+    M	  : Molar mass constant, kg/mol 
 
 Note:
 
@@ -15,7 +15,7 @@ the dimensionless form of the (molar) heat capacity at constant
 pressure (the molar enthalpy and entropy functions are integrals of
 this):
 
-	Cp/R = sum(xi*T**yj) (i=1:7, j=-2:4)
+    Cp/R = sum(xi*T**yj) (i=1:7, j=-2:4)
 
 where R = 8.314510 J/mol-K. In order to consistently evaluate the
 molar specific heat capacity (and molar enthalpy and entropy) this
@@ -34,16 +34,16 @@ import os
 from xml.etree import ElementTree as ET
 
 def fetch_value(name):
-	"""Return physical constant value from the XML tree"""
-	tree = ET.parse(os.path.join(os.path.dirname(__file__), 
-								 'data',
-								 'constants.xml'
-								 )
-					)
-	root = tree.getroot()
-	xpath = "./PhysicalConstant[@name='{}']/value".format(name)
-	text = root.find(xpath).text
-	return float(text)
+    """Return physical constant value from the XML tree"""
+    tree = ET.parse(os.path.join(os.path.dirname(__file__), 
+                                 'data',
+                                 'constants.xml'
+                                 )
+                    )
+    root = tree.getroot()
+    xpath = "./PhysicalConstant[@name='{}']/value".format(name)
+    text = root.find(xpath).text
+    return float(text)
 
 M = fetch_value('molar mass constant') 			# kg/mol
 R = fetch_value('molar gas constant') 			# J/mol-K

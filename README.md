@@ -32,7 +32,7 @@ TODO
 ----
 
   - CEA program interface. 
-  - Functionality extension.
+  - Limit scope to molar output.
 
 [CEA]: http://www.grc.nasa.gov/WWW/CEAWeb/index.htm
 [ThermoBuild]: http://www.grc.nasa.gov/WWW/CEAWeb/ceaThermoBuild.htm
