@@ -49,8 +49,8 @@ from math import log
 import collections
 from xml.etree import ElementTree as etree
 
-import constants as CONST
-import thermoinp
+import thermodata.constants as CONST
+import thermodata.thermoinp as thermoinp
 
 
 Interval = collections.namedtuple('Interval', 

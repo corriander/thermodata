@@ -2,7 +2,8 @@ import unittest
 import os
 import re
 import collections
-from ..thermodata import Interval, Species, Thermo, ChemDB, Table
+from thermodata.thermodata import Interval, Species, Thermo, ChemDB, Table
+from thermodata.thermodata import thermoinp
 
 class TestSpecies(unittest.TestCase):
     """Test Species instantiated w/ and w/o formation_enthalpy."""
