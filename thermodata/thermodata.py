@@ -162,6 +162,29 @@ class ChemDB(dict):
         # map thermoinp.Interval instance data to Interval instances
         return Interval(source.bounds, source.coeff, source.const)
 
+    @classmethod
+    def from_category(cls, string):
+        """Return instance with species in the specified category.
+
+        Categories
+        ----------
+
+            gases : gaseous phase data
+            gas_products : gaseous products
+            gas_reactants : gaseous reactants
+        """
+        inst = cls()
+        filt = []
+
+        if string == 'gases':
+            filt = filter(
+                    lambda s: s.phase == 0,
+                    inst._source_dict.values()
+            )
+
+        inst.update({s.name : s for s in filt})
+        return inst
+
 
 class Species(object):
     """Chemical species.
