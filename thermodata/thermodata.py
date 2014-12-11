@@ -433,7 +433,13 @@ class Table(object):
                    ''.join(fspec.format(value) for value in row[1:])
                    )
             table.append(''.join(row))
-        return '\n'.join(table)
+        return self._remove_negative_zero('\n'.join(table))
+
+    @staticmethod
+    def _remove_negative_zero(string):
+        # Replace '-0.000' with '0.000'
+        return string.replace('-0.000', '0.000')
+
 
 
 def _dimless_heat_capacity(T, a):
