@@ -199,6 +199,29 @@ class DB(object):
 
         return '\n'.join(filter(None, db))
 
+    def list_categories(self):
+        """List categories implemented in the database."""
+        return ['condensed', 'gaseous', 'reactant']
+
+    def list_species(self, category=''):
+        """List species in the database.
+
+        Arguments
+        ---------
+
+            category : filter by category
+        """
+        l = []
+        if category:
+            categories = [category,]
+        else:
+            categories = self.list_categories()
+
+        for category in categories:
+            l.extend([s.name for s in getattr(self, category)])
+
+        return l
+
     def _parse_to_categories(self):
         """Split database file into categories.
 
