@@ -6,6 +6,11 @@ species; gaseous equilibrium products, condensed equilibrium products
 and reactants (e.g. 'Air' or other mixtures with characteristic
 properties).
 
+The DB class is the main point of access now. It provides categories
+of species data (as SpeciesRecords) amongst other functionality.
+
+Deprecated:
+
 Several API functions are included to extract data from the source
 file at several levels of decomposition.
 
@@ -20,6 +25,7 @@ import re
 import os
 import collections
 
+# TODO: To be deprecated - replace with soft-coded file approach
 def _read_categories():
     # Split the database into three category strings.
     # Returns a category-keyed dictionary of string values.
@@ -39,6 +45,7 @@ def _read_categories():
                           '\nEND REACTANTS', re.DOTALL)
     return dict(zip(keys, pattern.search(contents).groups()))
 
+# NOTE: Deprecated (DB._parse_category)
 def _read_species():
     # Split the database into categorised lists of species.
 
@@ -51,6 +58,7 @@ def _read_species():
     pattern = re.compile(r'\n(?=[eA-Z(])')
     return {k:pattern.split(v) for k, v in categories.items()}
 
+# NOTE: Deprecated (DB._parse)
 def parse():
     """Parse the database into categorised lists of Species instances.
 
@@ -72,6 +80,7 @@ def parse():
             for k, lst in species_categories.items()
             }
 
+# NOTE: Deprecated (DB.__getitem__)
 def lookup(prefix, form='parsed', exact=False):
     """Locate species with a matching name prefix.
 
@@ -199,6 +208,9 @@ class DB(object):
         """Mixed-phase, reactant-only species."""
         return self._reactant
 
+    # ----------------------------------------------------------------
+    # External methods
+    # ----------------------------------------------------------------
     def format(self):
         """Return database in syntactically valid string format.
 
@@ -247,6 +259,9 @@ class DB(object):
 
         return l
 
+    # ----------------------------------------------------------------
+    # Internal methods
+    # ----------------------------------------------------------------
     def _parse_to_categories(self):
         """Split database file into categories.
 
@@ -283,12 +298,15 @@ class DB(object):
         for c in self.list_categories():
             self._parse_category(c)
 
+    # ----------------------------------------------------------------
+    # Magic methods
+    # ----------------------------------------------------------------
     def __getitem__(self, key):
         """Retrieve SpeciesRecord by species name (dict-like)."""
         # Access the hidden _dict which is keyed with species name.
         return self._dict[key]
 
-
+# TODO: To be deprecated: represent categories by set in DB
 def create_subset(prefix=None,
                   filter_category=None,
                   exact=False):
@@ -428,7 +446,7 @@ def create_subset(prefix=None,
 
     return '\n'.join(filter(None, subset))
 
-
+# NOTE: Deprecated
 def list_species():
     """List species in the database.
 
@@ -505,6 +523,7 @@ _Species = collections.namedtuple('SpeciesRecord',
                                    'T_reference',
                                    'intervals',])
 
+# TODO: Make intervals hashable, currently is a list.
 class SpeciesRecord(_Species):
     """Chemical species metadata and thermodynamic properties.
 
