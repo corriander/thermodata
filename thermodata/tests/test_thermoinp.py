@@ -2,7 +2,7 @@ import os
 import unittest
 import thermodata.thermoinp as thermoinp
 
-Species = thermoinp.Species
+Species = thermoinp.SpeciesRecord
 _Interval = thermoinp._Interval
 
 
