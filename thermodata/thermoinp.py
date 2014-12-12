@@ -6,6 +6,11 @@ species; gaseous equilibrium products, condensed equilibrium products
 and reactants (e.g. 'Air' or other mixtures with characteristic
 properties).
 
+The DB class is the main point of access now. It provides categories
+of species data (as SpeciesRecords) amongst other functionality.
+
+Deprecated:
+
 Several API functions are included to extract data from the source
 file at several levels of decomposition.
 
@@ -20,8 +25,9 @@ import re
 import os
 import collections
 
+# TODO: To be deprecated - replace with soft-coded file approach
 def _read_categories():
-    # Split the database into categories.
+    # Split the database into three category strings.
     # Returns a category-keyed dictionary of string values.
     path = os.path.join(os.path.dirname(__file__),
                         'data',
@@ -39,6 +45,7 @@ def _read_categories():
                           '\nEND REACTANTS', re.DOTALL)
     return dict(zip(keys, pattern.search(contents).groups()))
 
+# NOTE: Deprecated (DB._parse_category)
 def _read_species():
     # Split the database into categorised lists of species.
 
@@ -51,6 +58,7 @@ def _read_species():
     pattern = re.compile(r'\n(?=[eA-Z(])')
     return {k:pattern.split(v) for k, v in categories.items()}
 
+# NOTE: Deprecated (DB._parse)
 def parse():
     """Parse the database into categorised lists of Species instances.
 
@@ -72,6 +80,7 @@ def parse():
             for k, lst in species_categories.items()
             }
 
+# NOTE: Deprecated (DB.__getitem__)
 def lookup(prefix, form='parsed', exact=False):
     """Locate species with a matching name prefix.
 
@@ -144,10 +153,186 @@ def lookup(prefix, form='parsed', exact=False):
     return results
 
 
-def create_subset(search_strings=None,
+class DB(object):
+    """Interface to the 'thermo.inp' source database."""
+
+    # Define the thermo.inp format header.
+    header = '\n'.join([
+        '{:<80s}'.format('thermo'),
+        '   200.000  1000.000  6000.000 20000.000   9/09/04'
+    ])
+
+    def __init__(self):
+        self._parse()
+        self._dict = {s.name:s for s in self.all}
+
+    # ----------------------------------------------------------------
+    # Categories
+    # ----------------------------------------------------------------
+    @property
+    def all(self):
+        """All species."""
+        return self._condensed + self._gaseous + self._reactant
+
+    @property
+    def allcondensed(self):
+        """All condensed species (including reactants)."""
+        return [s
+                for s in (self._condensed + self._reactant)
+                if s.phase > 0]
+
+    @property
+    def allgases(self):
+        """All gaseous species (including reactants)."""
+        return [s
+                for s in (self._gaseous + self._reactant)
+                if s.phase == 0]
+
+    @property
+    def product(self):
+        """Species that can appear as products in reactions."""
+        return self._condensed + self._gaseous
+
+    @property
+    def condensed(self):
+        """Condensed, product-only species."""
+        return self._condensed
+
+    @property
+    def gaseous(self):
+        """Gaseous, product-only species."""
+        return self._gaseous
+
+    @property
+    def reactant(self):
+        """Mixed-phase, reactant-only species."""
+        return self._reactant
+
+    # ----------------------------------------------------------------
+    # External methods
+    # ----------------------------------------------------------------
+    def format(self):
+        """Return database in syntactically valid string format.
+
+        The string should be parsable by applications able to read
+        the source format.
+
+        Example
+        -------
+
+            >>> db = DB() # empty database
+            >>> print(db.formatted)
+            thermo
+               200.000  1000.000  6000.000 20000.000   9/09/04
+            END PRODUCTS
+            END REACTANTS
+        """
+        db = [self.header]
+        db.append('\n'.join(s.formatted for s in self.condensed))
+        db.append('\n'.join(s.formatted for s in self.gaseous))
+        db.append('END PRODUCTS')
+        db.append('\n'.join(s.formatted for s in self.reactant))
+        db.append('END REACTANTS')
+
+        return '\n'.join(filter(None, db))
+
+    def list_categories(self):
+        """List categories implemented in the original database."""
+        return ['condensed', 'gaseous', 'reactant']
+
+    def list_species(self, category=''):
+        """List species in the database.
+
+        Arguments
+        ---------
+
+            category : filter by category
+        """
+        l = []
+        if category:
+            categories = [category,]
+        else:
+            categories = self.list_categories()
+
+        for category in categories:
+            l.extend([s.name for s in getattr(self, category)])
+
+        return l
+
+    # ----------------------------------------------------------------
+    # Internal methods
+    # ----------------------------------------------------------------
+    def _parse_to_categories(self):
+        """Split database file into categories.
+
+        File location is hardcoded.
+        """
+        categ_dict = _read_categories()
+        self._condensed = categ_dict['condensed_products']
+        self._gaseous = categ_dict['gas_products']
+        self._reactant = categ_dict['reactants']
+
+    def _parse_category(self, category):
+        """Split category into species datasets."""
+        pattern = re.compile(r'\n(?=[eA-Z(])')
+        name = '_{}'.format(category)
+
+        # Add a flag to indicate whether the species is reactant-only
+        if category == 'reactant':
+            isproduct = False
+        else:
+            isproduct = True
+
+        # Split category (string) into species dataset (strings) and
+        # cast them as SpeciesRecord instances.
+        # FIXME: src should be passed directly, but for now other
+        # functions in this module are dependent on this list form.
+        l = [SpeciesRecord.from_dataset(src.split('\n'), isproduct)
+             for src in pattern.split(getattr(self, name))]
+        setattr(self, name, l)
+
+    def _parse(self):
+        """Split database file into (categorised) datasets."""
+        self._parse_to_categories()
+
+        for c in self.list_categories():
+            self._parse_category(c)
+
+    # ----------------------------------------------------------------
+    # Magic methods
+    # ----------------------------------------------------------------
+    def __getitem__(self, key):
+        """Retrieve SpeciesRecord by species name (dict-like)."""
+        # Access the hidden _dict which is keyed with species name.
+        return self._dict[key]
+
+# TODO: To be deprecated: represent categories by set in DB
+def create_subset(prefix=None,
                   filter_category=None,
                   exact=False):
-    """Syntactically valid subset filtered by search term or category.
+    """Return a syntactically valid subset of thermo.inp in a string.
+
+    This function provides means to generate a custom database in the
+    original format that should be readable by applications that parse
+    it directly (e.g. CEA). See below for an explanation of the
+    general specification for this format.
+
+
+    Arguments
+    ---------
+
+        prefixes : search string prefix (uses re.match())
+        filter_category : restrict search to category:
+
+             'gas_products',
+             'condensed_products',
+             'reactants'
+
+        exact : performs a whole-word search rather than prefix match
+
+
+    Usage
+    -----
 
     The prefix is passed to lookup() and exhibits the same behaviour.
     For example, to create a subset containing the family of jet
@@ -168,6 +353,21 @@ def create_subset(search_strings=None,
     prefix. The exact parameter can be specified to match whole name
     strings.
 
+
+    Database Format
+    ---------------
+
+    The general structure of the thermo.inp data format is:
+
+        thermo
+           200.000  1000.000  6000.000 20000.000   9/09/04
+        # Product species datasets
+        END PRODUCTS
+        # Reactant species datasets
+        END REACTANTS
+
+    As long as these features are present the database is
+    syntactically valid and should be parsable.
     """
 
     # Recreate the delimiters, these can be interleaved with
@@ -189,20 +389,21 @@ def create_subset(search_strings=None,
              'reactants' : 2
              }
 
-    if (search_strings, filter_category) == (None, None):
-        # there's no point handling this combination
+    if (prefix, filter_category) == (None, None):
+        # this is a no-op
         raise ValueError("No subset criteria selected")
 
-    elif search_strings is None:
+    elif prefix is None:
+        # i.e. filter_category is not None
         # category of species can be obtained directly as a string
         string = _read_categories()[filter_category]
         matching_species[index[filter_category]] = string
 
     else:
-        # search_strings is defined. category might be.
-        if isinstance(search_strings, str):
-            search_strings = [search_strings]
-        for string in search_strings:
+        # prefix is defined. category might be.
+        if isinstance(prefix, str):
+            prefix = [prefix]
+        for string in prefix:
             category_dict = lookup(string, 'unparsed', exact)
 
             if filter_category is not None:
@@ -245,7 +446,7 @@ def create_subset(search_strings=None,
 
     return '\n'.join(filter(None, subset))
 
-
+# NOTE: Deprecated
 def list_species():
     """List species in the database.
 
@@ -309,7 +510,7 @@ def _pprint_refcode(code):
 #
 # --------------------------------------------------------------------
 
-_Species = collections.namedtuple('Species',
+_Species = collections.namedtuple('SpeciesRecord',
                                   ['name',
                                    'comments',
                                    'nintervals',
@@ -320,9 +521,10 @@ _Species = collections.namedtuple('Species',
                                    'h_formation',
                                    'h_assigned',
                                    'T_reference',
-                                   'intervals'])
+                                   'intervals',])
 
-class Species(_Species):
+# TODO: Make intervals hashable, currently is a list.
+class SpeciesRecord(_Species):
     """Chemical species metadata and thermodynamic properties.
 
         `name` 		  : Species name/ID (usually formula)
@@ -336,48 +538,71 @@ class Species(_Species):
         `h_assigned`  : assigned enthalpy (nintervals == 0)
         `T_reference` : reference temperature (for assigned enthalpy)
         `intervals`   : temperature intervals (nintervals > 0)
-
     """
-    pass
+
+    @property
+    def formatted(self):
+        """Return species dataset as a thermo.inp formatted string."""
+        return self._formatted
+
+    @property
+    def isproduct(self):
+        """Flag indicates if species is a valid reaction product."""
+        return self._isproduct
 
 
-def _parse_species(records):
-    # Parse records containing species data.
-    # Returns a Species instance.
+    @classmethod
+    def from_dataset(cls, records, isproduct=False):
+        """Create a SpeciesRecord instance from a thermo.inp block.
 
-    # split the records up
-    head, body, tail = records[0], records[1], records[2:]
+        Arguments
+        ---------
 
-    # Parse the name & comments from the header
-    name, comments = _parse_first_record(head)
+            records : list of thermo.inp species records (strings)
 
-    # Parse the non-polynomial data
-    nintervals = int(body[1])
-    refcode = body[2:10].strip()
-    # make the formula a bit more parse-friendly but leave as a string
-    # e.g. 'C   1.00O  2.00   0.00   0.00   0.00' -> 'C:1.00 O:2.00'
-    formula = ' '.join([
-        '{!s}:{!s}'.format(body[i:i+2].strip(), body[i+2:i+8].strip())
-        for i in range(10, 50, 8)
-        ]).replace(' :0.00', '')
-    phase = int(body[51])
-    molwt = float(body[52:65])
+        Each species dataset has a number of records/lines (3-11)
+        """
+        # Parse records containing species data.
+        # Returns a Species instance.
 
-    # At this stage, the fields have the potential to vary depending
-    # on whether temperature intervals are present or not.
-    refenthalpy = float(body[65:])
-    if nintervals > 0:
-        h_assigned = T_reference = None
-        h_formation = refenthalpy
-        # each interval is described by three records
-        intervals = [_parse_interval(tail[i:i+3])
-                     for i in range(0, len(tail), 3)]
-    else:
-        h_formation = intervals = None
-        h_assigned = refenthalpy
-        T_reference = float(tail[0].split()[0]) # grab the first word
+        # We want to keep the source data around
+        # FIXME: this undoes a previous operation.
+        rawdata = '\n'.join(records)
 
-    return Species(name,
+        # split the records up
+        head, body, tail = records[0], records[1], records[2:]
+
+        # Parse the name & comments from the header
+        name, comments = _parse_first_record(head)
+
+        # Parse the non-polynomial data
+        nintervals = int(body[1])
+        refcode = body[2:10].strip()
+        # make formula a bit more parse-friendly but leave as a string
+        # e.g.
+        #	'C   1.00O  2.00   0.00   0.00   0.00' -> 'C:1.00 O:2.00'
+        formula = ' '.join([
+            '{!s}:{!s}'.format(body[i:i+2].strip(), body[i+2:i+8].strip())
+            for i in range(10, 50, 8)
+            ]).replace(' :0.00', '')
+        phase = int(body[51])
+        molwt = float(body[52:65])
+
+        # At this stage, the fields have potential to vary depending
+        # on whether temperature intervals are present or not.
+        refenthalpy = float(body[65:])
+        if nintervals > 0:
+            h_assigned = T_reference = None
+            h_formation = refenthalpy
+            # each interval is described by three records
+            intervals = [_parse_interval(tail[i:i+3])
+                         for i in range(0, len(tail), 3)]
+        else:
+            h_formation = intervals = None
+            h_assigned = refenthalpy
+            T_reference = float(tail[0].split()[0]) # grab first word
+
+        inst = cls(name,
                    comments,
                    nintervals,
                    refcode,
@@ -388,6 +613,14 @@ def _parse_species(records):
                    h_assigned,
                    T_reference,
                    intervals)
+
+        inst._formatted = rawdata
+        inst._isproduct = isproduct
+        return inst
+
+
+def _parse_species(records):
+    return SpeciesRecord.from_dataset(records)
 
 def _parse_first_record(record):
     # Takes the first record of a species dataset and returns the name
