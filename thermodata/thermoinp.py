@@ -451,48 +451,56 @@ class SpeciesRecord(_Species):
         `h_assigned`  : assigned enthalpy (nintervals == 0)
         `T_reference` : reference temperature (for assigned enthalpy)
         `intervals`   : temperature intervals (nintervals > 0)
-
     """
-    pass
 
+    @classmethod
+    def from_dataset(cls, records):
+        """Create a SpeciesRecord instance from a thermo.inp block.
 
-def _parse_species(records):
-    # Parse records containing species data.
-    # Returns a Species instance.
+        Arguments
+        ---------
 
-    # split the records up
-    head, body, tail = records[0], records[1], records[2:]
+            records : list of thermo.inp species records (strings)
 
-    # Parse the name & comments from the header
-    name, comments = _parse_first_record(head)
+        Each species dataset has a number of records/lines (3-11)
+        """
+        # Parse records containing species data.
+        # Returns a Species instance.
 
-    # Parse the non-polynomial data
-    nintervals = int(body[1])
-    refcode = body[2:10].strip()
-    # make the formula a bit more parse-friendly but leave as a string
-    # e.g. 'C   1.00O  2.00   0.00   0.00   0.00' -> 'C:1.00 O:2.00'
-    formula = ' '.join([
-        '{!s}:{!s}'.format(body[i:i+2].strip(), body[i+2:i+8].strip())
-        for i in range(10, 50, 8)
-        ]).replace(' :0.00', '')
-    phase = int(body[51])
-    molwt = float(body[52:65])
+        # split the records up
+        head, body, tail = records[0], records[1], records[2:]
 
-    # At this stage, the fields have the potential to vary depending
-    # on whether temperature intervals are present or not.
-    refenthalpy = float(body[65:])
-    if nintervals > 0:
-        h_assigned = T_reference = None
-        h_formation = refenthalpy
-        # each interval is described by three records
-        intervals = [_parse_interval(tail[i:i+3])
-                     for i in range(0, len(tail), 3)]
-    else:
-        h_formation = intervals = None
-        h_assigned = refenthalpy
-        T_reference = float(tail[0].split()[0]) # grab the first word
+        # Parse the name & comments from the header
+        name, comments = _parse_first_record(head)
 
-    return Species(name,
+        # Parse the non-polynomial data
+        nintervals = int(body[1])
+        refcode = body[2:10].strip()
+        # make formula a bit more parse-friendly but leave as a string
+        # e.g.
+        #	'C   1.00O  2.00   0.00   0.00   0.00' -> 'C:1.00 O:2.00'
+        formula = ' '.join([
+            '{!s}:{!s}'.format(body[i:i+2].strip(), body[i+2:i+8].strip())
+            for i in range(10, 50, 8)
+            ]).replace(' :0.00', '')
+        phase = int(body[51])
+        molwt = float(body[52:65])
+
+        # At this stage, the fields have potential to vary depending
+        # on whether temperature intervals are present or not.
+        refenthalpy = float(body[65:])
+        if nintervals > 0:
+            h_assigned = T_reference = None
+            h_formation = refenthalpy
+            # each interval is described by three records
+            intervals = [_parse_interval(tail[i:i+3])
+                         for i in range(0, len(tail), 3)]
+        else:
+            h_formation = intervals = None
+            h_assigned = refenthalpy
+            T_reference = float(tail[0].split()[0]) # grab first word
+
+        return cls(name,
                    comments,
                    nintervals,
                    refcode,
@@ -503,6 +511,10 @@ def _parse_species(records):
                    h_assigned,
                    T_reference,
                    intervals)
+
+
+def _parse_species(records):
+    return SpeciesRecord.from_dataset(records)
 
 def _parse_first_record(record):
     # Takes the first record of a species dataset and returns the name
