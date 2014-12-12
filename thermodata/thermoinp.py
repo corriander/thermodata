@@ -144,6 +144,83 @@ def lookup(prefix, form='parsed', exact=False):
     return results
 
 
+class DB(object):
+    """Interface to the 'thermo.inp' source database."""
+
+    # Define the thermo.inp format header.
+    header = '\n'.join([
+        '{:<80s}'.format('thermo'),
+        '   200.000  1000.000  6000.000 20000.000   9/09/04'
+    ])
+
+    def __init__(self):
+        self._parse()
+
+    # ----------------------------------------------------------------
+    # Categories
+    # ----------------------------------------------------------------
+    @property
+    def condensed(self):
+        """Condensed, product-only species."""
+        return self._condensed
+
+    @property
+    def gaseous(self):
+        """Gaseous, product-only species."""
+        return self._gaseous
+
+    @property
+    def reactant(self):
+        """Mixed-phase, reactant-only species."""
+        return self._reactant
+
+    def formatted(self):
+        """Return database as string in syntactically valid format.
+
+        Example
+        -------
+
+            >>> db = DB() # empty database
+            >>> print(db.formatted())
+            thermo
+               200.000  1000.000  6000.000 20000.000   9/09/04
+            END PRODUCTS
+            END REACTANTS
+        """
+        db = [self.header]
+        db.append(self.condensed)
+        db.append(self.gaseous)
+        db.append('END PRODUCTS')
+        db.append(self.reactant)
+        db.append('END REACTANTS')
+
+        return '\n'.join(filter(None, db))
+
+    def _parse_to_categories(self):
+        """Split database file into categories.
+
+        File location is hardcoded.
+        """
+        categ_dict = _read_categories()
+        self._condensed = categ_dict['condensed_products']
+        self._gaseous = categ_dict['gas_products']
+        self._reactant = categ_dict['reactants']
+
+    def _parse_to_datasets(self, category):
+        """Split category into species datasets."""
+        pattern = re.compile(r'\n(?=[eA-Z(])')
+        name = '_{}'.format(category)
+        setattr(self, name, pattern.split(getattr(self, name)))
+
+
+    def _parse(self):
+        """Split database file into (categorised) datasets."""
+        self._parse_to_categories()
+
+        for categ in ('condensed', 'gaseous', 'reactant'):
+            self._parse_to_datasets(categ)
+
+
 def create_subset(prefix=None,
                   filter_category=None,
                   exact=False):
@@ -219,8 +296,6 @@ def create_subset(prefix=None,
                   '{:<80s}'.format('END REACTANTS')
                   )
 
-    print(delimiters)
-
     # empty list for blocks of species, map category to an index
     matching_species = [[], [], []] # 3 categories of species
     index = {'gas_products' : 0,
@@ -229,10 +304,11 @@ def create_subset(prefix=None,
              }
 
     if (prefix, filter_category) == (None, None):
-        # there's no point handling this combination
+        # this is a no-op
         raise ValueError("No subset criteria selected")
 
     elif prefix is None:
+        # i.e. filter_category is not None
         # category of species can be obtained directly as a string
         string = _read_categories()[filter_category]
         matching_species[index[filter_category]] = string
