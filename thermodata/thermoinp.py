@@ -435,7 +435,7 @@ _Species = collections.namedtuple('SpeciesRecord',
                                    'h_formation',
                                    'h_assigned',
                                    'T_reference',
-                                   'intervals'])
+                                   'intervals',])
 
 class SpeciesRecord(_Species):
     """Chemical species metadata and thermodynamic properties.
@@ -453,6 +453,10 @@ class SpeciesRecord(_Species):
         `intervals`   : temperature intervals (nintervals > 0)
     """
 
+    @property
+    def formatted(self):
+        return self._formatted
+
     @classmethod
     def from_dataset(cls, records):
         """Create a SpeciesRecord instance from a thermo.inp block.
@@ -466,6 +470,10 @@ class SpeciesRecord(_Species):
         """
         # Parse records containing species data.
         # Returns a Species instance.
+
+        # We want to keep the source data around
+        # FIXME: this undoes a previous operation.
+        rawdata = '\n'.join(records)
 
         # split the records up
         head, body, tail = records[0], records[1], records[2:]
@@ -500,7 +508,7 @@ class SpeciesRecord(_Species):
             h_assigned = refenthalpy
             T_reference = float(tail[0].split()[0]) # grab first word
 
-        return cls(name,
+        inst = cls(name,
                    comments,
                    nintervals,
                    refcode,
@@ -511,6 +519,9 @@ class SpeciesRecord(_Species):
                    h_assigned,
                    T_reference,
                    intervals)
+
+        inst._formatted = rawdata
+        return inst
 
 
 def _parse_species(records):
