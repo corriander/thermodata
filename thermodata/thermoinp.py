@@ -242,11 +242,17 @@ class DB(object):
         pattern = re.compile(r'\n(?=[eA-Z(])')
         name = '_{}'.format(category)
 
+        # Add a flag to indicate whether the species is reactant-only
+        if category == 'reactant':
+            isproduct = False
+        else:
+            isproduct = True
+
         # Split category (string) into species dataset (strings) and
         # cast them as SpeciesRecord instances.
         # FIXME: src should be passed directly, but for now other
         # functions in this module are dependent on this list form.
-        l = [SpeciesRecord.from_dataset(src.split('\n'))
+        l = [SpeciesRecord.from_dataset(src.split('\n'), isproduct)
              for src in pattern.split(getattr(self, name))]
         setattr(self, name, l)
 
@@ -254,7 +260,7 @@ class DB(object):
         """Split database file into (categorised) datasets."""
         self._parse_to_categories()
 
-        for c in ('condensed', 'gaseous', 'reactant'):
+        for c in self.list_categories():
             self._parse_category(c)
 
 
@@ -492,10 +498,17 @@ class SpeciesRecord(_Species):
 
     @property
     def formatted(self):
+        """Return species dataset as a thermo.inp formatted string."""
         return self._formatted
 
+    @property
+    def isproduct(self):
+        """Flag indicates if species is a valid reaction product."""
+        return self._isproduct
+
+
     @classmethod
-    def from_dataset(cls, records):
+    def from_dataset(cls, records, isproduct=False):
         """Create a SpeciesRecord instance from a thermo.inp block.
 
         Arguments
@@ -558,6 +571,7 @@ class SpeciesRecord(_Species):
                    intervals)
 
         inst._formatted = rawdata
+        inst._isproduct = isproduct
         return inst
 
 
