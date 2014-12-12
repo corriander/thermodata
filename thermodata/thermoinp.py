@@ -160,6 +160,11 @@ class DB(object):
     # Categories
     # ----------------------------------------------------------------
     @property
+    def all(self):
+        """All species."""
+        return self._condensed + self._gaseous + self._reactant
+
+    @property
     def condensed(self):
         """Condensed, product-only species."""
         return self._condensed
