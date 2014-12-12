@@ -174,24 +174,27 @@ class DB(object):
         """Mixed-phase, reactant-only species."""
         return self._reactant
 
-    def formatted(self):
-        """Return database as string in syntactically valid format.
+    def format(self):
+        """Return database in syntactically valid string format.
+
+        The string should be parsable by applications able to read
+        the source format.
 
         Example
         -------
 
             >>> db = DB() # empty database
-            >>> print(db.formatted())
+            >>> print(db.formatted)
             thermo
                200.000  1000.000  6000.000 20000.000   9/09/04
             END PRODUCTS
             END REACTANTS
         """
         db = [self.header]
-        db.append(self.condensed)
-        db.append(self.gaseous)
+        db.append('\n'.join(s.formatted for s in self.condensed))
+        db.append('\n'.join(s.formatted for s in self.gaseous))
         db.append('END PRODUCTS')
-        db.append(self.reactant)
+        db.append('\n'.join(s.formatted for s in self.reactant))
         db.append('END REACTANTS')
 
         return '\n'.join(filter(None, db))
@@ -206,19 +209,25 @@ class DB(object):
         self._gaseous = categ_dict['gas_products']
         self._reactant = categ_dict['reactants']
 
-    def _parse_to_datasets(self, category):
+    def _parse_category(self, category):
         """Split category into species datasets."""
         pattern = re.compile(r'\n(?=[eA-Z(])')
         name = '_{}'.format(category)
-        setattr(self, name, pattern.split(getattr(self, name)))
 
+        # Split category (string) into species dataset (strings) and
+        # cast them as SpeciesRecord instances.
+        # FIXME: src should be passed directly, but for now other
+        # functions in this module are dependent on this list form.
+        l = [SpeciesRecord.from_dataset(src.split('\n'))
+             for src in pattern.split(getattr(self, name))]
+        setattr(self, name, l)
 
     def _parse(self):
         """Split database file into (categorised) datasets."""
         self._parse_to_categories()
 
-        for categ in ('condensed', 'gaseous', 'reactant'):
-            self._parse_to_datasets(categ)
+        for c in ('condensed', 'gaseous', 'reactant'):
+            self._parse_category(c)
 
 
 def create_subset(prefix=None,
