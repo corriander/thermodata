@@ -155,6 +155,7 @@ class DB(object):
 
     def __init__(self):
         self._parse()
+        self._dict = {s.name:s for s in self.all}
 
     # ----------------------------------------------------------------
     # Categories
@@ -281,6 +282,11 @@ class DB(object):
 
         for c in self.list_categories():
             self._parse_category(c)
+
+    def __getitem__(self, key):
+        """Retrieve SpeciesRecord by species name (dict-like)."""
+        # Access the hidden _dict which is keyed with species name.
+        return self._dict[key]
 
 
 def create_subset(prefix=None,
