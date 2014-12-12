@@ -21,7 +21,7 @@ import os
 import collections
 
 def _read_categories():
-    # Split the database into categories.
+    # Split the database into three category strings.
     # Returns a category-keyed dictionary of string values.
     path = os.path.join(os.path.dirname(__file__),
                         'data',
@@ -144,10 +144,32 @@ def lookup(prefix, form='parsed', exact=False):
     return results
 
 
-def create_subset(search_strings=None,
+def create_subset(prefix=None,
                   filter_category=None,
                   exact=False):
-    """Syntactically valid subset filtered by search term or category.
+    """Return a syntactically valid subset of thermo.inp in a string.
+
+    This function provides means to generate a custom database in the
+    original format that should be readable by applications that parse
+    it directly (e.g. CEA). See below for an explanation of the
+    general specification for this format.
+
+
+    Arguments
+    ---------
+
+        prefixes : search string prefix (uses re.match())
+        filter_category : restrict search to category:
+
+             'gas_products',
+             'condensed_products',
+             'reactants'
+
+        exact : performs a whole-word search rather than prefix match
+
+
+    Usage
+    -----
 
     The prefix is passed to lookup() and exhibits the same behaviour.
     For example, to create a subset containing the family of jet
@@ -168,6 +190,21 @@ def create_subset(search_strings=None,
     prefix. The exact parameter can be specified to match whole name
     strings.
 
+
+    Database Format
+    ---------------
+
+    The general structure of the thermo.inp data format is:
+
+        thermo
+           200.000  1000.000  6000.000 20000.000   9/09/04
+        # Product species datasets
+        END PRODUCTS
+        # Reactant species datasets
+        END REACTANTS
+
+    As long as these features are present the database is
+    syntactically valid and should be parsable.
     """
 
     # Recreate the delimiters, these can be interleaved with
@@ -182,6 +219,8 @@ def create_subset(search_strings=None,
                   '{:<80s}'.format('END REACTANTS')
                   )
 
+    print(delimiters)
+
     # empty list for blocks of species, map category to an index
     matching_species = [[], [], []] # 3 categories of species
     index = {'gas_products' : 0,
@@ -189,20 +228,20 @@ def create_subset(search_strings=None,
              'reactants' : 2
              }
 
-    if (search_strings, filter_category) == (None, None):
+    if (prefix, filter_category) == (None, None):
         # there's no point handling this combination
         raise ValueError("No subset criteria selected")
 
-    elif search_strings is None:
+    elif prefix is None:
         # category of species can be obtained directly as a string
         string = _read_categories()[filter_category]
         matching_species[index[filter_category]] = string
 
     else:
-        # search_strings is defined. category might be.
-        if isinstance(search_strings, str):
-            search_strings = [search_strings]
-        for string in search_strings:
+        # prefix is defined. category might be.
+        if isinstance(prefix, str):
+            prefix = [prefix]
+        for string in prefix:
             category_dict = lookup(string, 'unparsed', exact)
 
             if filter_category is not None:
@@ -309,7 +348,7 @@ def _pprint_refcode(code):
 #
 # --------------------------------------------------------------------
 
-_Species = collections.namedtuple('Species',
+_Species = collections.namedtuple('SpeciesRecord',
                                   ['name',
                                    'comments',
                                    'nintervals',
@@ -322,7 +361,7 @@ _Species = collections.namedtuple('Species',
                                    'T_reference',
                                    'intervals'])
 
-class Species(_Species):
+class SpeciesRecord(_Species):
     """Chemical species metadata and thermodynamic properties.
 
         `name` 		  : Species name/ID (usually formula)
