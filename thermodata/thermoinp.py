@@ -165,6 +165,25 @@ class DB(object):
         return self._condensed + self._gaseous + self._reactant
 
     @property
+    def allcondensed(self):
+        """All condensed species (including reactants)."""
+        return [s
+                for s in (self._condensed + self._reactant)
+                if s.phase > 0]
+
+    @property
+    def allgases(self):
+        """All gaseous species (including reactants)."""
+        return [s
+                for s in (self._gaseous + self._reactant)
+                if s.phase == 0]
+
+    @property
+    def product(self):
+        """Species that can appear as products in reactions."""
+        return self._condensed + self._gaseous
+
+    @property
     def condensed(self):
         """Condensed, product-only species."""
         return self._condensed
@@ -205,7 +224,7 @@ class DB(object):
         return '\n'.join(filter(None, db))
 
     def list_categories(self):
-        """List categories implemented in the database."""
+        """List categories implemented in the original database."""
         return ['condensed', 'gaseous', 'reactant']
 
     def list_species(self, category=''):
