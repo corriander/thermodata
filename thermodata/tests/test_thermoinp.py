@@ -72,14 +72,46 @@ class TestDB(unittest.TestCase):
         self.assertIsInstance(matches, list)
         self.assertEqual(len(matches), 0)
 
+    # ----------------------------------------------------------------
+    # Test subset creation
+    # ----------------------------------------------------------------
+    def test_subset_type(self):
+        """The subset method returns a new database instance."""
+        self.assertIsInstance(self.db.subset(), thermoinp.DB)
 
-# NOTE: Subset functionality only partially implemented in DB class.
-class TestCreateSubset(unittest.TestCase):
-    def setUp(self):
-        self.datad = os.path.join(os.path.dirname(__file__), 'data')
+    def test_subset_filt(self):
+        """The subset method takes a filter function as an argument.
+
+        This allows subsets to be fabricated from arbitrary species
+        properties.
+        """
+        subset = self.db.subset(filt=lambda s: s.name is 'H2')
+        self.assertEqual(len(subset._dict), 1)
+        self.assertEqual(subset['H2'], test_gas)
+
+    def test_subset_species_single(self):
+        """The subset method takes of species name(s) as an arg.
+
+        A single string is passed to lookup.
+        """
+        subset = self.db.subset(species='.*H2')
+        self.assertEqual(len(subset._dict), 78)
+
+    def test_subset_species_multi(self):
+        """The subset method takes an iterable of species names.
+
+        All strings in the iterable are passed to lookup.
+        """
+        subset = self.db.subset(species=('^H2$', '^N2$'))
+        self.assertEqual(len(subset._dict), 2)
+
+    # ----------------------------------------------------------------
+    # Test format
+    # ----------------------------------------------------------------
+    datad = os.path.join(os.path.dirname(__file__), 'data')
 
     def get_data(self, fname):
-        """Return the contents of a specified ThermoBuild data file""" 
+        """Return the contents of a specified ThermoBuild data file"""
         path = os.path.join(self.datad, fname)
         with open(path, 'r') as f: return f.read().strip('\n')
 
@@ -87,21 +119,21 @@ class TestCreateSubset(unittest.TestCase):
         """Test a subset containing only reactant/product species."""
         correct_data = self.get_data('products_subset.txt')
         species = ('O2', 'N2', 'Ar', 'CO2')
-        testing_data = thermoinp.create_subset(species, exact=True)
+        testing_data = self.db.subset(species)
         self.assertEqual(testing_data, correct_data)
 
     def test_no_products(self):
         """Test a subset containing only reactant species."""
         correct_data = self.get_data('reactants_subset.txt')
         species = ('Air', 'Jet-A(L)', 'Jet-A(g)')
-        testing_data = thermoinp.create_subset(species, exact=True)
+        testing_data = self.db.subset(species)
         self.assertEqual(testing_data, correct_data)
-        
+
     def test_mixed(self):
         """Test a subset containing both reactants and products."""
         correct_data = self.get_data('mixed_subset.txt')
         species = ('C3H8', 'Air')
-        testing_data = thermoinp.create_subset(species, exact=True)
+        testing_data = self.db.subset(species)
         self.assertEqual(testing_data, correct_data)
 
 # --------------------------------------------------------------------
