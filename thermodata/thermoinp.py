@@ -8,132 +8,25 @@ properties).
 
 The DB class is the main point of access now. It provides categories
 of species data (as SpeciesRecords) amongst other functionality.
-
-Deprecated:
-
-Several API functions are included to extract data from the source
-file at several levels of decomposition.
-
-  - `parse` returns a category-keyed dictionary of species datasets
-    parsed into a namedtuple.
-  - `lookup` can search the database for species with a name matching
-    a prefix.
-  - `list_species` provides simple categorised lists of species names.
-
 """
 import re
 import os
 import collections
 
-# TODO: To be deprecated - replace with soft-coded file approach
-def _read_categories():
-    # Split the database into three category strings.
-    # Returns a category-keyed dictionary of string values.
-    path = os.path.join(os.path.dirname(__file__),
-                        'data',
-                        'thermo.inp')
-    keys = 'gas_products', 'condensed_products', 'reactants'
-    with open(path, 'r') as f: contents = f.read()
-    # Gaseous reactants/products begin with species 'e-'
-    # Condensed reactants/products begin with species 'Ag(cr)'
-    # Reactants begin with 'Air'
-    # We can catch all three categories in one go with a regex:
-    pattern = re.compile(r'\n(e-.*)'
-                          '\n(Ag\(cr\).*)'
-                          '\nEND PRODUCTS.*'
-                          '\n(Air.*)'
-                          '\nEND REACTANTS', re.DOTALL)
-    return dict(zip(keys, pattern.search(contents).groups()))
-
-# NOTE: Deprecated (DB._parse_category)
-def _read_species():
-    # Split the database into categorised lists of species.
-
-    # Returns a category-keyed dictionary of species-separated
-    # content.  Each category is a list of species dataset strings.
-    # The strings contain newline-delimited records containing
-    # species-specific data.
-    categories = _read_categories()
-    # For each category, separate into per-species strings
-    pattern = re.compile(r'\n(?=[eA-Z(])')
-    return {k:pattern.split(v) for k, v in categories.items()}
-
-
-# NOTE: Deprecated (DB.__getitem__)
-def lookup(prefix, form='parsed', exact=False):
-    """Locate species with a matching name prefix.
-
-    This will search the database and return species datasets where
-    the name matches a prefix, returning the results in a
-    category-keyed dictionary of lists (no results in a category is
-    represented by None value).
-
-        >>> matches = lookup('N2')
-        >>> type(matches)
-        <type 'dict'>
-        >>> len(matches['reactants'])
-        3
-        >>> matches['reactants'][1].name
-        'N2H4(L)'
-
-    Optionally, the search can return unprocessed species datasets:
-
-        >>> matches = lookup('N2', form='unparsed')
-        >>> matches['reactants'][1][:40] # limit sample string length
-        'N2H4(L)           Hydrazine.Hf:Gurvich,1'
-
-    The search can be category-restricted neatly using Python syntax:
-
-        >>> matches = lookup('N2')['reactants']
-        >>> type(matches)
-        <type 'list'>
-        >>> len(matches)
-        3
-
-    More advanced searching/browsing is outside the scope of this
-    module.
-
-    """
-    if exact:
-        pattern = re.compile(r'{}$'.format(re.escape(prefix)))
-    else:
-        pattern = re.compile(r'{}'.format(re.escape(prefix)))
-
-    if form == 'parsed':
-        # parse the database file into Species objects, set up the
-        # match function to check against the species name.
-        source = parse()
-        def match(species):
-            return pattern.match(species.name)
-
-    elif form == 'unparsed':
-        # split the database file into per-species strings, set up the
-        # match function to check against the name region of the
-        # string (with trailing whitespace stripped)
-        source = _read_species()
-        def match(species):
-            name, __ = _parse_first_record(species.split('\n')[0])
-            return pattern.match(name)
-
-    else:
-        raise ValueError("Argument form='{!s}' invalid".format(form))
-
-    results = dict.fromkeys(source)	# results container
-    for category in results:
-        # keep track of matches
-        matches = [species
-                   for species in source[category]
-                   if match(species)
-                   ]
-        if matches:
-            # if there are matches, add them to results
-            results[category] = matches
-
-    return results
+from thermodata.poly import NASAPoly
 
 
 class DB(object):
-    """Interface to the 'thermo.inp' source database."""
+    """Interface to the 'thermo.inp' source database.
+
+    The source database is grouped into three distinct sections:
+
+        condensed products and reactants
+        gaseous products and reactants
+        reactants
+
+    This class provides subsets of the database species.
+    """
 
     # Define the thermo.inp format header.
     header = '\n'.join([
@@ -392,162 +285,12 @@ class DB(object):
         # Access the hidden _dict which is keyed with species name.
         return self._dict[key]
 
-# TODO: To be deprecated: represent categories by set in DB
-def create_subset(prefix=None,
-                  filter_category=None,
-                  exact=False):
-    """Return a syntactically valid subset of thermo.inp in a string.
-
-    This function provides means to generate a custom database in the
-    original format that should be readable by applications that parse
-    it directly (e.g. CEA). See below for an explanation of the
-    general specification for this format.
-
-
-    Arguments
-    ---------
-
-        prefixes : search string prefix (uses re.match())
-        filter_category : restrict search to category:
-
-             'gas_products',
-             'condensed_products',
-             'reactants'
-
-        exact : performs a whole-word search rather than prefix match
-
-
-    Usage
-    -----
-
-    The prefix is passed to lookup() and exhibits the same behaviour.
-    For example, to create a subset containing the family of jet
-    fuels:
-
-        >>> string = create_subset('JP')
-
-    To create a subset of all gaseous products with names containing
-    the prefix 'N2':
-
-        >>> string = create_subset('N2', 'gas_products')
-
-    To output all reactant species:
-
-        >>> string = create_subset(filter_category='reactants')
-
-    Note that the lookup is based on matching a species name with a
-    prefix. The exact parameter can be specified to match whole name
-    strings.
-
-
-    Database Format
-    ---------------
-
-    The general structure of the thermo.inp data format is:
-
-        thermo
-           200.000  1000.000  6000.000 20000.000   9/09/04
-        # Product species datasets
-        END PRODUCTS
-        # Reactant species datasets
-        END REACTANTS
-
-    As long as these features are present the database is
-    syntactically valid and should be parsable.
-    """
-
-    # Recreate the delimiters, these can be interleaved with
-    # categories. This is quicker than pulling them from the source
-    # and easier than passing this data around.
-    header = ['{:<80s}'.format('thermo')]
-    intervals = '   200.000  1000.000  6000.000 20000.000   9/09/04'
-    header.append(intervals)
-    delimiters = ('\n'.join(header),
-                  '',
-                  '{:<80s}'.format('END PRODUCTS'),
-                  '{:<80s}'.format('END REACTANTS')
-                  )
-
-    # empty list for blocks of species, map category to an index
-    matching_species = [[], [], []] # 3 categories of species
-    index = {'gas_products' : 0,
-             'condensed_products' : 1,
-             'reactants' : 2
-             }
-
-    if (prefix, filter_category) == (None, None):
-        # this is a no-op
-        raise ValueError("No subset criteria selected")
-
-    elif prefix is None:
-        # i.e. filter_category is not None
-        # category of species can be obtained directly as a string
-        string = _read_categories()[filter_category]
-        matching_species[index[filter_category]] = string
-
-    else:
-        # prefix is defined. category might be.
-        if isinstance(prefix, str):
-            prefix = [prefix]
-        for string in prefix:
-            category_dict = lookup(string, 'unparsed', exact)
-
-            if filter_category is not None:
-                # We can filter the lookup results, giving us a list.
-                # Reference the correct element of the
-                # matching_species container
-                dataset_list = category_dict[filter_category]
-                output_list = matching_species[index[filter_category]]
-                if dataset_list is not None:
-                    # Extend the list with new datasets.
-                    output_list.extend([dataset
-                                        for dataset in dataset_list
-                                        if dataset not in output_list]
-                                       )
-                continue
-
-            # ^^ continue means we're only here if category is not
-            # specified
-            for category, dataset_list in category_dict.items():
-                # Start by referencing the appropriate element of the
-                # matching_species container
-                output_list = matching_species[index[category]]
-                if dataset_list is not None:
-                    # Extend the list with new datasets
-                    output_list.extend([dataset
-                                        for dataset in dataset_list
-                                        if dataset not in output_list]
-                                       )
-
-        # All search strings have been looked up, matching_species is
-        # a list of three lists containing matching datasets. These
-        # need processing.
-        for i, list_ in enumerate(matching_species):
-            sorted_datasets = sorted(list_)
-            matching_species[i] = '\n'.join(sorted_datasets)
-
-    subset = [None] * 7 # len(delimiters) + len(species)
-    subset[::2] = delimiters # populate even with delimiters
-    subset[1::2] = matching_species # fill odd indices with matches
-
-    return '\n'.join(filter(None, subset))
-
-# NOTE: Deprecated
-def list_species():
-    """List species in the database.
-
-    Returns a category-keyed dictionary of species names
-
-    """
-    return {category:[species.name for species in species_list]
-            for category, species_list in parse().items()}
 
 # --------------------------------------------------------------------
 #
-# General utility functions (non-API)
+# Internal functions
 #
 # --------------------------------------------------------------------
-
 def _pprint_refcode(code):
     """Look up the NASA GRC reference code and format."""
 
@@ -589,13 +332,31 @@ def _pprint_refcode(code):
             ''.join(date)
             )
 
+# TODO: To be deprecated - replace with soft-coded file approach
+def _read_categories():
+    # Split the database into three category strings.
+    # Returns a category-keyed dictionary of string values.
+    path = os.path.join(os.path.dirname(__file__),
+                        'data',
+                        'thermo.inp')
+    keys = 'gas_products', 'condensed_products', 'reactants'
+    with open(path, 'r') as f: contents = f.read()
+    # Gaseous reactants/products begin with species 'e-'
+    # Condensed reactants/products begin with species 'Ag(cr)'
+    # Reactants begin with 'Air'
+    # We can catch all three categories in one go with a regex:
+    pattern = re.compile(r'\n(e-.*)'
+                          '\n(Ag\(cr\).*)'
+                          '\nEND PRODUCTS.*'
+                          '\n(Air.*)'
+                          '\nEND REACTANTS', re.DOTALL)
+    return dict(zip(keys, pattern.search(contents).groups()))
 
 # --------------------------------------------------------------------
 #
 # Data structure for the 2002-spec species datasets
 #
 # --------------------------------------------------------------------
-
 _Species = collections.namedtuple('SpeciesRecord',
                                   ['name',
                                    'comments',
@@ -720,7 +481,6 @@ def _parse_first_record(record):
 # <=8-term poly with 2 integration constants)
 #
 # --------------------------------------------------------------------
-
 _Interval = collections.namedtuple('TemperatureInterval',
                                    ['bounds',
                                     'ncoeff',
@@ -728,6 +488,7 @@ _Interval = collections.namedtuple('TemperatureInterval',
                                     'deltah',
                                     'coeff',
                                     'const'])
+
 
 
 class Interval(_Interval):
