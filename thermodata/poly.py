@@ -73,6 +73,78 @@ class NASAPolyML(NASAPoly):
         return _dimless_heat_capacity(T, self.a) * constants.R_CEA
 
 
+# Parser class for handling datasets -> (NASAPoly*, ...)
+class Parser(object):
+
+    def __init__(self, polycls=NASAPoly):
+        self.polycls = polycls
+
+    def __call__(self, dataset):
+        """Return NASAPoly instances for each interval in a dataset.
+        """
+        # Split dataset into records
+        records = dataset.strip().split('\n')
+
+        # No. intervals is at (2, 2) or (1, 1) in 0-index
+        if records[1][1] == 0:
+            polys = ()
+        else:
+            polys = self._parse_intervals(records[2:])
+        return polys
+
+    def _parse_intervals(self, records):
+        # Return a tuple of NASAPoly* instances for a list of records
+        # containing interval metadata and polynomial specification.
+
+        return tuple(
+            self._parse_interval(lines)
+            for lines in self._intervals(records)
+        )
+
+    @staticmethod
+    def _intervals(records):
+        # Return records split into triplets
+        for i in range(0, len(records), 3):
+            yield records[i:i+3]
+
+    def _parse_interval(self, records):
+        # Return a NASAPoly* instance for a record triplet
+
+        # the first line is metadata, the second two specify the poly
+        lim, n, exp, dh = self._parse_metadata(records[0])
+        a, b = self._parse_coefficients(records[1:])
+
+        return self.polycls(lim, a, b, n, exp, dh)
+
+    def _parse_metadata(self, record):
+        # Returns a tuple (lim, n, exp, dh)
+        lim = tuple(float(n) for n in record[:22].split())
+        n = int(record[22])
+        exp = tuple(float(n) for n in record[23:63].split())
+        dh = float(record[65:])
+
+        return (lim, n, exp, dh)
+
+    def _parse_coefficients(self, records):
+        # Returns tuple of coefficients (a1, .. a7) & consts (b1, b2)
+        array1, array2 = records
+
+        # parse records containing numerical strings
+        a = self._double_array_to_float(array1)
+        a.extend(self._double_array_to_float(array2[:32]))
+        a = tuple(a)
+        b = tuple(self._double_array_to_float(array2[48:]))
+
+        return (a, b)
+
+    def _double_array_to_float(self, string):
+        # Parse a string a containing 16-char Fortran-style doubles into
+        # a list of floats
+        float_strings = [string[i:i+16].replace('D','e') # Pythonify
+                         for i in range(0, len(string), 16)]
+        return list(map(float, float_strings))
+
+
 # --------------------------------------------------------------------
 # Functions
 # --------------------------------------------------------------------
