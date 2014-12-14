@@ -41,27 +41,36 @@ class TestDB(unittest.TestCase):
         """
         self.assertIn(test_reactant, self.db.reactant)
 
+    # ----------------------------------------------------------------
+    # Test querying functionality
+    # ----------------------------------------------------------------
+    def test_key_query(self):
+        """Test dict-like access works."""
+        self.assertEqual(self.db['H2'], test_gas)
 
-# NOTE: Filtering functionality not yet implemented in DB class but
-# this doesn't work anymore.
-#class TestLookup(unittest.TestCase):
-#	def test_lookup(self):
-#		"""Test sample species is in lookup results"""
-#		self.assertTrue(test_reactant in
-#						thermoinp.lookup('JP-10')['reactants'])
-#
-#	def test_lookup_exact(self):
-#		"""Test a search for a single species with the 'exact' flag.
-#
-#		This test checks that the exact flag correctly restricts
-#		results to only an exact name match, i.e. the 'gas_products'
-#		category is a list containing only the H2 dataset and not
-#		a list of datasets where 'H2' matches the start of the name
-#		(H2O2, etc).
-#
-#		"""
-#		matches = thermoinp.lookup('H2', exact=True)['gas_products']
-#		self.assertEqual([test_gas], matches)
+    def test_lookup_simple_string(self):
+        """Check a simple prefix search works.
+
+        Lookup offers more functionality than __getitem__. Returns
+        multiple matches based on the search string.
+        """
+        # Should be 15 matches for 'H2'
+        self.assertEqual(len(self.db.lookup('H2')), 15)
+
+    def test_lookup_regex_string(self):
+        """Check a regex search.
+
+        Lookup offers more functionality than __getitem__. Returns
+        multiple matches based on the search string.
+        """
+        # Should be 78 matches for '.*H2'
+        self.assertEqual(len(self.db.lookup('.*H2')), 78)
+
+    def test_lookup_no_match(self):
+        """Checks a match failure returns an empty list."""
+        matches = self.db.lookup('i am a fish')
+        self.assertIsInstance(matches, list)
+        self.assertEqual(len(matches), 0)
 
 
 # NOTE: Subset functionality only partially implemented in DB class.

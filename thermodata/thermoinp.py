@@ -238,6 +238,35 @@ class DB(object):
 
         return l
 
+    def lookup(self, string):
+        """Query the database for species names matching `string`.
+
+        Returns a list of SpeciesRecord.
+
+        Usage
+        -----
+
+        This method wraps re.match so regexen works.
+
+            >>> lst = db.lookup('*.H2')
+            >>> len(lst)
+            78
+
+        Batteries aren't included for filtering by category, but it's
+        simple enough to construct more advanced queries. For example,
+        searching for all species with 'H2' in the name that are also
+        reactants might look a little like:
+
+            >>> [s.name for s in db.lookup('.*H2') if s in db.reactant]
+            ['(CH2)x(cr)', 'C2H2(L),acetyle', 'C6H5NH2(L)', 'H2(L)', 'H2O2(L)']
+        """
+
+        lst = []
+        for name, obj in self._dict.items():
+            if re.match(string, name):
+                lst.append(obj)
+        return sorted(lst, key=lambda o: o.name)
+
     # ----------------------------------------------------------------
     # Internal methods
     # ----------------------------------------------------------------
