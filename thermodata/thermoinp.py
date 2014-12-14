@@ -209,9 +209,9 @@ class DB(object):
         db = [self.header]
         db.append('\n'.join(s.formatted for s in self.condensed))
         db.append('\n'.join(s.formatted for s in self.gaseous))
-        db.append('END PRODUCTS')
+        db.append('{:<80s}'.format('END PRODUCTS'))
         db.append('\n'.join(s.formatted for s in self.reactant))
-        db.append('END REACTANTS')
+        db.append('{:<80s}'.format('END REACTANTS'))
 
         return '\n'.join(filter(None, db))
 
@@ -252,6 +252,15 @@ class DB(object):
             >>> len(lst)
             78
 
+        Note that parantheses are present in many species names and
+        are therefore escaped by default. Don't treat parentheses in
+        any special way.
+
+            >>> len(db.lookup('Jet-A(g)'))
+            1
+            >>> len(db.lookup('Jet-A\(g\)'))
+            0
+
         Batteries aren't included for filtering by category, but it's
         simple enough to construct more advanced queries. For example,
         searching for all species with 'H2' in the name that are also
@@ -260,23 +269,79 @@ class DB(object):
             >>> [s.name for s in db.lookup('.*H2') if s in db.reactant]
             ['(CH2)x(cr)', 'C2H2(L),acetyle', 'C6H5NH2(L)', 'H2(L)', 'H2O2(L)']
         """
-
+        string = string.replace('(','\(').replace(')','\)')
         lst = []
         for name, obj in self._dict.items():
             if re.match(string, name):
                 lst.append(obj)
         return sorted(lst, key=lambda o: o.name)
 
-    def subset(self, filt=None):
+    def subset(self, species=(), filt=None):
+        """Create a subset of this database.
+
+        Returns a new DB instance containing species matching the
+        criteria. There are two methods of defining criteria, by a
+        species name pattern (or iterable of patterns) which get
+        passed to `lookup` and a filter function.
+
+        Arguments
+        ---------
+
+            species : string or iterable of strings containing
+                patterns which get matched against species names.
+            filt : callable that takes an object (SpeciesRecord) and
+                returns a boolean value. Used directly in `filter`.
+
+        Examples
+        --------
+
+        Filter function for any gas species:
+
+            >>> subset = DB().subset(filt=lambda o: o.phase == 0)
+
+        Species list:
+
+            >>> subset = DB().subset(('.*H2', 'Air'))
+        """
+        # Argument handling
+        # -----------------
+        # We should accept a string here (e.g. '.*H2')
+        if isinstance(species, str):
+            species = (species,)
+
+        # Create the None filter
         if filt is None:
-            filt = lambda o: True
+            filt = lambda obj: True
 
+        # Create a set of species matching the species specification
+        if species:
+            species_set = set()
+            for string in species:
+                species_set.update(set(self.lookup(string)))
+        else:
+            species_set = set(self._dict.values())
+
+        # New DB instance (super crude, might want to subclass)
+        # -----------------------------------------------------
         subset = self.__class__()
-
         subset._dict = {}
-        for name, obj in self._dict.items():
-            if filt(obj):
-                subset._dict[name] = obj
+        for obj in filter(filt, species_set):
+            subset._dict[obj.name] = obj
+
+        # Bit of a hack workaround; previously the database was split
+        # into three groups as it was parsed. This information is now
+        # carried with the species (isproduct and phase). This is
+        # fairly deeply entrenched in the database structure currently
+        # so we're going to overwrite the condensed, gaseous and
+        # reactant lists which are the guts (but _dict should be now)
+        objs = subset._dict.values()
+        reactants = filter(lambda o: o in self.reactant, objs)
+        gaseous = filter(lambda o: o in self.gaseous, objs)
+        condensed = filter(lambda o: o in self.condensed, objs)
+        sort_key = lambda o: o.name
+        subset._reactant = sorted(reactants, key=sort_key)
+        subset._condensed = sorted(condensed, key=sort_key)
+        subset._gaseous = sorted(gaseous, key=sort_key)
 
         return subset
 

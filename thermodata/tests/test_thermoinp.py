@@ -115,25 +115,25 @@ class TestDB(unittest.TestCase):
         path = os.path.join(self.datad, fname)
         with open(path, 'r') as f: return f.read().strip('\n')
 
-    def test_no_reactants(self):
+    def test_format_no_reactants(self):
         """Test a subset containing only reactant/product species."""
         correct_data = self.get_data('products_subset.txt')
-        species = ('O2', 'N2', 'Ar', 'CO2')
-        testing_data = self.db.subset(species)
+        species = (x + '$' for x in ('O2', 'N2', 'Ar', 'CO2'))
+        testing_data = self.db.subset(species).format()
         self.assertEqual(testing_data, correct_data)
 
-    def test_no_products(self):
+    def test_format_no_products(self):
         """Test a subset containing only reactant species."""
         correct_data = self.get_data('reactants_subset.txt')
-        species = ('Air', 'Jet-A(L)', 'Jet-A(g)')
-        testing_data = self.db.subset(species)
+        species = (x + '$' for x in ('Air', 'Jet-A(L)', 'Jet-A(g)'))
+        testing_data = self.db.subset(species).format()
         self.assertEqual(testing_data, correct_data)
 
-    def test_mixed(self):
+    def test_format_mixed(self):
         """Test a subset containing both reactants and products."""
         correct_data = self.get_data('mixed_subset.txt')
-        species = ('C3H8', 'Air')
-        testing_data = self.db.subset(species)
+        species = (x + '$' for x in ('C3H8', 'Air'))
+        testing_data = self.db.subset(species).format()
         self.assertEqual(testing_data, correct_data)
 
 # --------------------------------------------------------------------
