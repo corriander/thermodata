@@ -58,27 +58,6 @@ def _read_species():
     pattern = re.compile(r'\n(?=[eA-Z(])')
     return {k:pattern.split(v) for k, v in categories.items()}
 
-# NOTE: Deprecated (DB._parse)
-def parse():
-    """Parse the database into categorised lists of Species instances.
-
-    Returns a category-keyed dictionary of lists containing Species
-    instances.
-
-        >>> d = parse()
-        >>> sorted(d.keys())
-        ['condensed_products', 'gas_products', 'reactants']
-        >>> type(d['reactants'])
-        <type 'list'>
-        >>> sample_species = d['reactants'][0]
-        >>> sample_species.name
-        'Air'
-
-    """
-    species_categories = _read_species()
-    return {k:[_parse_species(string.split('\n')) for string in lst]
-            for k, lst in species_categories.items()
-            }
 
 # NOTE: Deprecated (DB.__getitem__)
 def lookup(prefix, form='parsed', exact=False):
@@ -598,6 +577,7 @@ class SpeciesRecord(_Species):
             intervals = tuple(_parse_interval(tail[i:i+3])
                               for i in range(0, len(tail), 3))
         else:
+            # FIXME: intervals should probably be an empty tuple.
             h_formation = intervals = None
             h_assigned = refenthalpy
             T_reference = float(tail[0].split()[0]) # grab first word

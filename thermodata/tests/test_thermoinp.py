@@ -42,47 +42,6 @@ class TestDB(unittest.TestCase):
         self.assertIn(test_reactant, self.db.reactant)
 
 
-class TestParse(unittest.TestCase):
-    def setUp(self):
-        self.parsed = thermoinp.parse()
-    
-    def test_gas(self):
-        """Test sample gas in results.
-
-        The test data has been constructed independently from the code
-        data flow, a match here implies that the data is being
-        parsed accurately.
-        
-        """
-        self.assertTrue(test_gas in self.parsed['gas_products'])
-    
-    def test_condensed(self):
-        """Test sample condensed products in results.
-
-        The test data has been constructed independently from the code
-        data flow, a match here implies that the data is being
-        parsed accurately.
-        
-        """
-        self.assertTrue(test_condensed in 
-                        self.parsed['condensed_products']
-                        )
-    
-    def test_reactant(self):
-        """Test sample reactants are in the reactants category.
-
-
-        The test data has been constructed independently from the code
-        data flow, a match here implies that the data is being
-        parsed accurately. A second species with no temperature
-        intervals is also checked for, ensuring these special cases
-        are also parsed as expected.
-        
-        """
-        self.assertTrue(test_reactant in self.parsed['reactants'])
-        self.assertTrue(test_sp_reactant in self.parsed['reactants'])
-
-
 class TestLookup(unittest.TestCase):
     def test_lookup(self):
         """Test sample species is in lookup results"""
