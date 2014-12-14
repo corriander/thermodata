@@ -13,7 +13,7 @@ import re
 import os
 import collections
 
-from thermodata.poly import NASAPoly
+from thermodata import poly
 
 
 class DB(object):
@@ -28,13 +28,16 @@ class DB(object):
     This class provides subsets of the database species.
     """
 
+    polytype = poly.NASAPoly
+
     # Define the thermo.inp format header.
     header = '\n'.join([
         '{:<80s}'.format('thermo'),
         '   200.000  1000.000  6000.000 20000.000   9/09/04'
     ])
 
-    def __init__(self):
+    def __init__(self, polytype=''):
+        self._select_polytype(polytype)
         self._parse()
         self._dict = {s.name:s for s in self.all}
 
@@ -266,8 +269,12 @@ class DB(object):
         # cast them as SpeciesRecord instances.
         # FIXME: src should be passed directly, but for now other
         # functions in this module are dependent on this list form.
-        l = [SpeciesRecord.from_dataset(src.split('\n'), isproduct)
-             for src in pattern.split(getattr(self, name))]
+        l = []
+        for src in pattern.split(getattr(self, name)):
+            src = src.split('\n')
+            polycls = self.polytype
+            sr = SpeciesRecord.from_dataset(src, isproduct, polycls)
+            l.append(sr)
         setattr(self, name, l)
 
     def _parse(self):
@@ -276,6 +283,11 @@ class DB(object):
 
         for c in self.list_categories():
             self._parse_category(c)
+
+    def _select_polytype(self, polytype):
+        # Selects appropriate class from module: poly
+        cls = getattr(poly, 'NASAPoly{}'.format(polytype.upper()))
+        self.polytype = cls
 
     # ----------------------------------------------------------------
     # Magic methods
@@ -354,6 +366,71 @@ def _read_categories():
 
 # --------------------------------------------------------------------
 #
+# Data structure for the 2002-spec polynomial form (variable form
+# <=8-term poly with 2 integration constants)
+#
+# --------------------------------------------------------------------
+_Interval = collections.namedtuple('TemperatureInterval',
+                                   ['bounds',
+                                    'ncoeff',
+                                    'exponents',
+                                    'deltah',
+                                    'coeff',
+                                    'const'])
+
+
+
+class Interval(_Interval):
+    """Specification of polynomial function of temperature.
+
+    This class of object stores data describing a variable form
+    polynomial function applicable to a defined temperature interval.
+    Fields correspond to the following data:
+
+      `bounds`    : Interval bounds (Tmin, Tmax)
+      `ncoeff`    : Number of coefficients/terms
+      `exponents` : Exponent magnitudes (len() == ncoeff)
+      `deltah`    : Reference enthalpy value
+      `coeff`     : Coefficients (len() == ncoeff)
+      `const`     : Integration constants
+
+    """
+    pass
+
+def _double_array_to_float(string):
+    # Parse a string a containing 16-char Fortran-style doubles into
+    # a list of floats
+    float_strings = [string[i:i+16].replace('D','e') # Pythonify
+                     for i in range(0, len(string), 16)]
+    return list(map(float, float_strings))
+
+def _parse_interval(records, cls=Interval):
+    # Parse records containing a temperature interval/polynomial spec.
+    # This expects records as a list of strings and returns an
+    # Interval instance.
+    metadata, array1, array2 = records
+
+    # parse metadata string first
+    bounds = tuple(float(n) for n in metadata[:22].split())
+    ncoeffs = int(metadata[22])
+    exponents = tuple(float(n) for n in metadata[23:63].split())
+    deltah = float(metadata[65:])
+
+    # parse records containing numerical strings
+    coeffs = _double_array_to_float(array1)
+    coeffs.extend(_double_array_to_float(array2[:32]))
+    coeffs = tuple(coeffs)
+    consts = tuple(_double_array_to_float(array2[48:]))
+
+    if issubclass(cls, poly.NASAPoly):
+        args = bounds, coeffs, consts, ncoeffs, exponents, deltah
+    else:
+        args = bounds, ncoeffs, exponents, deltah, coeffs, consts
+
+    return cls(*args)
+
+# --------------------------------------------------------------------
+#
 # Data structure for the 2002-spec species datasets
 #
 # --------------------------------------------------------------------
@@ -399,7 +476,7 @@ class SpeciesRecord(_Species):
 
 
     @classmethod
-    def from_dataset(cls, records, isproduct=False):
+    def from_dataset(cls, records, isproduct=False, polycls=Interval):
         """Create a SpeciesRecord instance from a thermo.inp block.
 
         Arguments
@@ -442,7 +519,7 @@ class SpeciesRecord(_Species):
             h_assigned = T_reference = None
             h_formation = refenthalpy
             # each interval is described by three records
-            intervals = tuple(_parse_interval(tail[i:i+3])
+            intervals = tuple(_parse_interval(tail[i:i+3], polycls)
                               for i in range(0, len(tail), 3))
         else:
             # FIXME: intervals should probably be an empty tuple.
@@ -475,67 +552,3 @@ def _parse_first_record(record):
     # and comment fields
     return record[:18].rstrip(), record[18:].rstrip()
 
-# --------------------------------------------------------------------
-#
-# Data structure for the 2002-spec polynomial form (variable form
-# <=8-term poly with 2 integration constants)
-#
-# --------------------------------------------------------------------
-_Interval = collections.namedtuple('TemperatureInterval',
-                                   ['bounds',
-                                    'ncoeff',
-                                    'exponents',
-                                    'deltah',
-                                    'coeff',
-                                    'const'])
-
-
-
-class Interval(_Interval):
-    """Specification of polynomial function of temperature.
-
-    This class of object stores data describing a variable form
-    polynomial function applicable to a defined temperature interval.
-    Fields correspond to the following data:
-
-      `bounds`    : Interval bounds (Tmin, Tmax)
-      `ncoeff`    : Number of coefficients/terms
-      `exponents` : Exponent magnitudes (len() == ncoeff)
-      `deltah`    : Reference enthalpy value
-      `coeff`     : Coefficients (len() == ncoeff)
-      `const`     : Integration constants
-
-    """
-    pass
-
-def _double_array_to_float(string):
-    # Parse a string a containing 16-char Fortran-style doubles into
-    # a list of floats
-    float_strings = [string[i:i+16].replace('D','e') # Pythonify
-                     for i in range(0, len(string), 16)]
-    return list(map(float, float_strings))
-
-def _parse_interval(records):
-    # Parse records containing a temperature interval/polynomial spec.
-    # This expects records as a list of strings and returns an
-    # Interval instance.
-    metadata, array1, array2 = records
-
-    # parse metadata string first
-    bounds = tuple(float(n) for n in metadata[:22].split())
-    ncoeffs = int(metadata[22])
-    exponents = tuple(float(n) for n in metadata[23:63].split())
-    deltah = float(metadata[65:])
-
-    # parse records containing numerical strings
-    coeffs = _double_array_to_float(array1)
-    coeffs.extend(_double_array_to_float(array2[:32]))
-    coeffs = tuple(coeffs)
-    consts = tuple(_double_array_to_float(array2[48:]))
-
-    return Interval(bounds,
-                    ncoeffs,
-                    exponents,
-                    deltah,
-                    coeffs,
-                    consts)

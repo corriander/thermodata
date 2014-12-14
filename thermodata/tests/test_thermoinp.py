@@ -2,15 +2,36 @@ import os
 import unittest
 
 from thermodata import thermoinp
+from thermodata import poly
 
 Species = thermoinp.SpeciesRecord
-_Interval = thermoinp._Interval
 
 
 class TestDB(unittest.TestCase):
     # Instantiate the database for testing database features.
     db = thermoinp.DB()
 
+    # ----------------------------------------------------------------
+    # Test configuration
+    # ----------------------------------------------------------------
+    def test_init_with_blank_polytype(self):
+        """An empty polytype uses NASAPoly polynomials/intervals."""
+        db = thermoinp.DB(polytype='')
+        self.assertIsInstance(db['Air'].intervals[0], poly.NASAPoly)
+
+    def test_init_with_nd_polytype(self):
+        """polytype='nd' uses NASAPolyND polynomials/intervals."""
+        db = thermoinp.DB(polytype='nd')
+        self.assertIsInstance(db['Air'].intervals[0], poly.NASAPolyND)
+
+    def test_init_with_ml_polytype(self):
+        """polytype='ml' uses NASAPolyML polynomials/intervals."""
+        db = thermoinp.DB(polytype='ml')
+        self.assertIsInstance(db['Air'].intervals[0], poly.NASAPolyML)
+
+    # ----------------------------------------------------------------
+    # Test parsing of source database (macroscopic; "is it there?")
+    # ----------------------------------------------------------------
     def test_parse_gas(self):
         """Test the sample gas is in the database.
 
@@ -151,10 +172,7 @@ test_gas = Species(
     h_formation=0.000,
     h_assigned=None,
     T_reference=None,
-    intervals=(_Interval((200, 1000),
-                         7,
-                         (-2, -1, 0, 1, 2, 3, 4, 0),
-                         8468.102,
+    intervals=(poly.NASAPoly((200, 1000),
                          ( 4.078323210e+04,
                           -8.009186040e+02,
                            8.214702010e+00,
@@ -166,11 +184,11 @@ test_gas = Species(
                          ( 2.682484665e+03,
                           -3.043788844e+01,
                           ),
-                         ),
-               _Interval((1000, 6000),
                          7,
                          (-2, -1, 0, 1, 2, 3, 4, 0),
                          8468.102,
+                         ),
+               poly.NASAPoly((1000, 6000),
                          ( 5.608128010e+05,
                           -8.371504740e+02,
                            2.975364532e+00,
@@ -181,12 +199,12 @@ test_gas = Species(
                           ),
                          ( 5.339824410e+03,
                           -2.202774769e+00,
-                          )
-                         ),
-               _Interval((6000.0,  20000.0),
+                          ),
                          7,
                          (-2, -1, 0, 1, 2, 3, 4, 0),
                          8468.102,
+                         ),
+               poly.NASAPoly((6000.0,  20000.0),
                          ( 4.966884120e+08,
                           -3.147547149e+05,
                            7.984121880e+01,
@@ -197,7 +215,10 @@ test_gas = Species(
                            ),
                          ( 2.488433516e+06,
                           -6.695728110e+02,
-                          )
+                          ),
+                         7,
+                         (-2, -1, 0, 1, 2, 3, 4, 0),
+                         8468.102,
                          )
                         ),
     )
@@ -213,10 +234,7 @@ test_condensed = Species(
     h_formation=0.000,
     h_assigned=None,
     T_reference=None,
-    intervals=(_Interval((200.0, 1235.080),
-                         7,
-                         (-2, -1, 0, 1, 2, 3, 4, 0),
-                         5745.000,
+    intervals=(poly.NASAPoly((200.0, 1235.080),
                          (-7.099236470e+04,
                            7.254788020e+02,
                            1.066518380e-01,
@@ -228,6 +246,9 @@ test_condensed = Species(
                          (-4.614014260e+03,
                            5.074216040e+00,
                           ),
+                         7,
+                         (-2, -1, 0, 1, 2, 3, 4, 0),
+                         5745.000,
                          ),  # end interval 1
                  ), # end intervals
     )
@@ -244,10 +265,7 @@ test_reactant = Species(
     h_formation=-86855.900,
     h_assigned=None,
     T_reference=None,
-    intervals=(_Interval((200.0, 1000.0),
-                         7,
-                         (-2, -1, 0, 1, 2, 3, 4, 0),
-                         22997.434,
+    intervals=(poly.NASAPoly((200.0, 1000.0),
                          (-7.310769440e+05,
                            1.521764245e+04,
                           -1.139312644e+02,
@@ -258,12 +276,12 @@ test_reactant = Species(
                           ),
                          (-8.067482120e+04,
                            6.320148610e+02,
-                           )
-                         ),  # end interval 1
-               _Interval((1000.0, 6000.0),
+                           ),
                          7,
                          (-2, -1, 0, 1, 2, 3, 4, 0),
                          22997.434,
+                         ),  # end interval 1
+               poly.NASAPoly((1000.0, 6000.0),
                          ( 1.220329594e+07,
                           -5.794846240e+04,
                            1.092281156e+02,
@@ -275,6 +293,9 @@ test_reactant = Species(
                          ( 3.257334050e+05,
                           -7.092350760e+02,
                            ),
+                         7,
+                         (-2, -1, 0, 1, 2, 3, 4, 0),
+                         22997.434,
                          ),  # end interval 2
                ),		  # end Intervals
     ) # end Species
