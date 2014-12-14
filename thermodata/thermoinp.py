@@ -595,8 +595,8 @@ class SpeciesRecord(_Species):
             h_assigned = T_reference = None
             h_formation = refenthalpy
             # each interval is described by three records
-            intervals = [_parse_interval(tail[i:i+3])
-                         for i in range(0, len(tail), 3)]
+            intervals = tuple(_parse_interval(tail[i:i+3])
+                              for i in range(0, len(tail), 3))
         else:
             h_formation = intervals = None
             h_assigned = refenthalpy

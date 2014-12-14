@@ -1,9 +1,45 @@
 import os
 import unittest
-import thermodata.thermoinp as thermoinp
+
+from thermodata import thermoinp
 
 Species = thermoinp.SpeciesRecord
 _Interval = thermoinp._Interval
+
+
+class TestDB(unittest.TestCase):
+    # Instantiate the database for testing database features.
+    db = thermoinp.DB()
+
+    def test_parse_gas(self):
+        """Test the sample gas is in the database.
+
+        The test data has been collated independent from the data flow
+        in the code. A match here implies that the data is being
+        parsed from the source correctly enough for the species to be
+        present.
+        """
+        self.assertIn(test_gas, self.db.gaseous)
+
+    def test_parse_condensed(self):
+        """Test the sample condensed species is in the database.
+
+        The test data has been collated independent from the data flow
+        in the code. A match here implies that the data is being
+        parsed from the source correctly enough for the species to be
+        present.
+        """
+        self.assertIn(test_condensed, self.db.condensed)
+
+    def test_parse_reactant(self):
+        """Test the sample condensed species is in the database.
+
+        The test data has been collated independent from the data flow
+        in the code. A match here implies that the data is being
+        parsed from the source correctly enough for the species to be
+        present.
+        """
+        self.assertIn(test_reactant, self.db.reactant)
 
 
 class TestParse(unittest.TestCase):
@@ -111,7 +147,7 @@ test_gas = Species(
     h_formation=0.000,
     h_assigned=None,
     T_reference=None,
-    intervals=[_Interval((200, 1000),
+    intervals=(_Interval((200, 1000),
                          7,
                          (-2, -1, 0, 1, 2, 3, 4, 0),
                          8468.102,
@@ -159,7 +195,7 @@ test_gas = Species(
                           -6.695728110e+02,
                           )
                          )
-                        ],
+                        ),
     )
 
 test_condensed = Species(
@@ -173,7 +209,7 @@ test_condensed = Species(
     h_formation=0.000,
     h_assigned=None,
     T_reference=None,
-    intervals=[_Interval((200.0, 1235.080),
+    intervals=(_Interval((200.0, 1235.080),
                          7,
                          (-2, -1, 0, 1, 2, 3, 4, 0),
                          5745.000,
@@ -189,7 +225,7 @@ test_condensed = Species(
                            5.074216040e+00,
                           ),
                          ),  # end interval 1
-                 ], # end intervals
+                 ), # end intervals
     )
 
 test_reactant = Species(
@@ -204,7 +240,7 @@ test_reactant = Species(
     h_formation=-86855.900,
     h_assigned=None,
     T_reference=None,
-    intervals=[_Interval((200.0, 1000.0),
+    intervals=(_Interval((200.0, 1000.0),
                          7,
                          (-2, -1, 0, 1, 2, 3, 4, 0),
                          22997.434,
@@ -231,14 +267,14 @@ test_reactant = Species(
                            2.034992622e-06,
                           -2.052060369e-10,
                            8.575760210e-15,
-                           ),             
+                           ),
                          ( 3.257334050e+05,
                           -7.092350760e+02,
                            ),
                          ),  # end interval 2
-               ],		  # end Intervals
+               ),		  # end Intervals
     ) # end Species
-                    
+
 
 test_sp_reactant = Species(
     name='RP-1',
