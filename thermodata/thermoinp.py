@@ -267,6 +267,19 @@ class DB(object):
                 lst.append(obj)
         return sorted(lst, key=lambda o: o.name)
 
+    def subset(self, filt=None):
+        if filt is None:
+            filt = lambda o: True
+
+        subset = self.__class__()
+
+        subset._dict = {}
+        for name, obj in self._dict.items():
+            if filt(obj):
+                subset._dict[name] = obj
+
+        return subset
+
     # ----------------------------------------------------------------
     # Internal methods
     # ----------------------------------------------------------------

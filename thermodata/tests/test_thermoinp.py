@@ -85,7 +85,7 @@ class TestDB(unittest.TestCase):
         This allows subsets to be fabricated from arbitrary species
         properties.
         """
-        subset = self.db.subset(filt=lambda s: s.name is 'H2')
+        subset = self.db.subset(filt=lambda s: s.name == 'H2')
         self.assertEqual(len(subset._dict), 1)
         self.assertEqual(subset['H2'], test_gas)
 
