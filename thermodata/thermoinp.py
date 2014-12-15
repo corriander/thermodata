@@ -44,6 +44,8 @@ class DB(object):
     # ----------------------------------------------------------------
     # Categories
     # ----------------------------------------------------------------
+    # TODO: Categories now unimportant with the functionality of
+    # subset. They should be removed.
     @property
     def all(self):
         """All species."""
@@ -68,6 +70,7 @@ class DB(object):
         """Species that can appear as products in reactions."""
         return self._condensed + self._gaseous
 
+    # NOTE wrt above TODO: Keep these!
     @property
     def condensed(self):
         """Condensed, product-only species."""

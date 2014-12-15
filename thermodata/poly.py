@@ -1,3 +1,4 @@
+import math
 import collections
 
 from thermodata import constants
@@ -54,11 +55,19 @@ class NASAPolyND(NASAPoly):
     ))
 
     def cpnd(self, T):
-        """Return the non-dim. heat cap. at const. pressure [ND]."""
+        """Return non-dim. heat cap. at const. pressure []."""
         return _dimless_heat_capacity(T, self.a)
 
+    def hnd(self, T):
+        """Return non-dimensional enthalpy []."""
+        return _dimless_enthalpy(T, self.a, b[0])
 
-# NASAPoly class with method to calculate molar heat capacity.
+    def snd(self, T):
+        """Return non-dimensional (T-dependent) entropy []."""
+        return _dimless_entropy(T, self.a, b[1])
+
+
+# NASAPoly class with method to calculate ndar heat capacity.
 class NASAPolyML(NASAPoly):
     __doc__ = '\n'.join((
         "NASA Polynomial with molar quantity methods.",
@@ -71,6 +80,15 @@ class NASAPolyML(NASAPoly):
     def cpmol(self, T):
         """Return molar heat cap. at const. pressure [J/(kmol K)]."""
         return _dimless_heat_capacity(T, self.a) * constants.R_CEA
+
+    def hmol(self, T):
+        """Return molar enthalpy [J/kmol]."""
+        return (_dimless_enthalpy(T, self.a, self.b[0]) *
+                constants.R_CEA * T)
+
+    def smol(self, T):
+        """Return molar (T-dependent) entropy [J/(kmol K)]."""
+        return _dimless_entropy(T, self.a, self.b[1]) * constants.R_CEA
 
 
 # Parser class for handling datasets -> (NASAPoly*, ...)
@@ -159,6 +177,34 @@ def _dimless_heat_capacity(T, a):
             + a[4] * T**2
             + a[5] * T**3
             + a[6] * T**4
+            )
+
+def _dimless_enthalpy(T, a, b):
+    # Returns the dimensionless enthalpy, H/RT
+    # T : Temperature, K
+    # a : coefficients, len(a) == 7
+    # b : integration constant
+    return (- a[0] / T**2
+            + (a[1] * math.log(T) + b) / T
+            + a[2]
+            + a[3] * T / 2.0
+            + a[4] * T**2 / 3.0
+            + a[5] * T**3 / 4.0
+            + a[6] * T**4 / 5.0
+            )
+
+def _dimless_entropy(T, a, b):
+    # Returns the dimensionless entropy, S/R.
+    # T : Temperature, K
+    # a : coefficients, len(a) == 7
+    # b : integration constant
+    return (- a[0] / T**2 / 2.0
+            - a[1] / T
+            + (a[2] * math.log(T) + b)
+            + a[3] * T
+            + a[4] * T**2 / 2.0
+            + a[5] * T**3 / 3.0
+            + a[6] * T**4 / 4.0
             )
 
 
