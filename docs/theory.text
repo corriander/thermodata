@@ -1,0 +1,11 @@
+Specific gas constant
+---------------------
+
+The specific gas constant, $R_i$, of a gas, $i$ is related to the
+molar gas constant, $R$ by the molar mass of the gas, $M_i$.
+
+$$R_i = \frac{R}{M_i}$$
+
+For dry air with a relative molar mass of $M_i = 28.96 g/mol$, $R_\text{Air} = 287.058 \frac{\text{J}}{\text{kg K}}$
+
+

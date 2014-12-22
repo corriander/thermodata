@@ -1,99 +1,160 @@
 import os
 import unittest
-import thermodata.thermoinp as thermoinp
+
+from thermodata import thermoinp
+from thermodata import poly
 
 Species = thermoinp.SpeciesRecord
-_Interval = thermoinp._Interval
 
 
-class TestParse(unittest.TestCase):
-    def setUp(self):
-        self.parsed = thermoinp.parse()
-    
-    def test_gas(self):
-        """Test sample gas in results.
+class TestDB(unittest.TestCase):
+    # Instantiate the database for testing database features.
+    db = thermoinp.DB()
 
-        The test data has been constructed independently from the code
-        data flow, a match here implies that the data is being
-        parsed accurately.
-        
+    # ----------------------------------------------------------------
+    # Test configuration
+    # ----------------------------------------------------------------
+    def test_init_with_blank_polytype(self):
+        """An empty polytype uses NASAPoly polynomials/intervals."""
+        db = thermoinp.DB(polytype='')
+        self.assertIsInstance(db['Air'].intervals[0], poly.NASAPoly)
+
+    def test_init_with_nd_polytype(self):
+        """polytype='nd' uses NASAPolyND polynomials/intervals."""
+        db = thermoinp.DB(polytype='nd')
+        self.assertIsInstance(db['Air'].intervals[0], poly.NASAPolyND)
+
+    def test_init_with_ml_polytype(self):
+        """polytype='ml' uses NASAPolyML polynomials/intervals."""
+        db = thermoinp.DB(polytype='ml')
+        self.assertIsInstance(db['Air'].intervals[0], poly.NASAPolyML)
+
+    # ----------------------------------------------------------------
+    # Test parsing of source database (macroscopic; "is it there?")
+    # ----------------------------------------------------------------
+    def test_parse_gas(self):
+        """Test the sample gas is in the database.
+
+        The test data has been collated independent from the data flow
+        in the code. A match here implies that the data is being
+        parsed from the source correctly enough for the species to be
+        present.
         """
-        self.assertTrue(test_gas in self.parsed['gas_products'])
-    
-    def test_condensed(self):
-        """Test sample condensed products in results.
+        self.assertIn(test_gas, self.db.gaseous)
 
-        The test data has been constructed independently from the code
-        data flow, a match here implies that the data is being
-        parsed accurately.
-        
+    def test_parse_condensed(self):
+        """Test the sample condensed species is in the database.
+
+        The test data has been collated independent from the data flow
+        in the code. A match here implies that the data is being
+        parsed from the source correctly enough for the species to be
+        present.
         """
-        self.assertTrue(test_condensed in 
-                        self.parsed['condensed_products']
-                        )
-    
-    def test_reactant(self):
-        """Test sample reactants are in the reactants category.
+        self.assertIn(test_condensed, self.db.condensed)
 
+    def test_parse_reactant(self):
+        """Test the sample condensed species is in the database.
 
-        The test data has been constructed independently from the code
-        data flow, a match here implies that the data is being
-        parsed accurately. A second species with no temperature
-        intervals is also checked for, ensuring these special cases
-        are also parsed as expected.
-        
+        The test data has been collated independent from the data flow
+        in the code. A match here implies that the data is being
+        parsed from the source correctly enough for the species to be
+        present.
         """
-        self.assertTrue(test_reactant in self.parsed['reactants'])
-        self.assertTrue(test_sp_reactant in self.parsed['reactants'])
+        self.assertIn(test_reactant, self.db.reactant)
 
+    # ----------------------------------------------------------------
+    # Test querying functionality
+    # ----------------------------------------------------------------
+    def test_key_query(self):
+        """Test dict-like access works."""
+        self.assertEqual(self.db['H2'], test_gas)
 
-class TestLookup(unittest.TestCase):
-    def test_lookup(self):
-        """Test sample species is in lookup results"""
-        self.assertTrue(test_reactant in 
-                        thermoinp.lookup('JP-10')['reactants'])
-    
-    def test_lookup_exact(self):
-        """Test a search for a single species with the 'exact' flag.
-        
-        This test checks that the exact flag correctly restricts
-        results to only an exact name match, i.e. the 'gas_products'
-        category is a list containing only the H2 dataset and not
-        a list of datasets where 'H2' matches the start of the name
-        (H2O2, etc). 
+    def test_lookup_simple_string(self):
+        """Check a simple prefix search works.
 
+        Lookup offers more functionality than __getitem__. Returns
+        multiple matches based on the search string.
         """
-        matches = thermoinp.lookup('H2', exact=True)['gas_products']
-        self.assertEqual([test_gas], matches)
+        # Should be 15 matches for 'H2'
+        self.assertEqual(len(self.db.lookup('H2')), 15)
 
-class TestCreateSubset(unittest.TestCase):
-    def setUp(self):
-        self.datad = os.path.join(os.path.dirname(__file__), 'data')
+    def test_lookup_regex_string(self):
+        """Check a regex search.
+
+        Lookup offers more functionality than __getitem__. Returns
+        multiple matches based on the search string.
+        """
+        # Should be 78 matches for '.*H2'
+        self.assertEqual(len(self.db.lookup('.*H2')), 78)
+
+    def test_lookup_no_match(self):
+        """Checks a match failure returns an empty list."""
+        matches = self.db.lookup('i am a fish')
+        self.assertIsInstance(matches, list)
+        self.assertEqual(len(matches), 0)
+
+    # ----------------------------------------------------------------
+    # Test subset creation
+    # ----------------------------------------------------------------
+    def test_subset_type(self):
+        """The subset method returns a new database instance."""
+        self.assertIsInstance(self.db.subset(), thermoinp.DB)
+
+    def test_subset_filt(self):
+        """The subset method takes a filter function as an argument.
+
+        This allows subsets to be fabricated from arbitrary species
+        properties.
+        """
+        subset = self.db.subset(filt=lambda s: s.name == 'H2')
+        self.assertEqual(len(subset._dict), 1)
+        self.assertEqual(subset['H2'], test_gas)
+
+    def test_subset_species_single(self):
+        """The subset method takes of species name(s) as an arg.
+
+        A single string is passed to lookup.
+        """
+        subset = self.db.subset(species='.*H2')
+        self.assertEqual(len(subset._dict), 78)
+
+    def test_subset_species_multi(self):
+        """The subset method takes an iterable of species names.
+
+        All strings in the iterable are passed to lookup.
+        """
+        subset = self.db.subset(species=('^H2$', '^N2$'))
+        self.assertEqual(len(subset._dict), 2)
+
+    # ----------------------------------------------------------------
+    # Test format
+    # ----------------------------------------------------------------
+    datad = os.path.join(os.path.dirname(__file__), 'data')
 
     def get_data(self, fname):
-        """Return the contents of a specified ThermoBuild data file""" 
+        """Return the contents of a specified ThermoBuild data file"""
         path = os.path.join(self.datad, fname)
         with open(path, 'r') as f: return f.read().strip('\n')
 
-    def test_no_reactants(self):
+    def test_format_no_reactants(self):
         """Test a subset containing only reactant/product species."""
         correct_data = self.get_data('products_subset.txt')
-        species = ('O2', 'N2', 'Ar', 'CO2')
-        testing_data = thermoinp.create_subset(species, exact=True)
+        species = (x + '$' for x in ('O2', 'N2', 'Ar', 'CO2'))
+        testing_data = self.db.subset(species).format()
         self.assertEqual(testing_data, correct_data)
 
-    def test_no_products(self):
+    def test_format_no_products(self):
         """Test a subset containing only reactant species."""
         correct_data = self.get_data('reactants_subset.txt')
-        species = ('Air', 'Jet-A(L)', 'Jet-A(g)')
-        testing_data = thermoinp.create_subset(species, exact=True)
+        species = (x + '$' for x in ('Air', 'Jet-A(L)', 'Jet-A(g)'))
+        testing_data = self.db.subset(species).format()
         self.assertEqual(testing_data, correct_data)
-        
-    def test_mixed(self):
+
+    def test_format_mixed(self):
         """Test a subset containing both reactants and products."""
         correct_data = self.get_data('mixed_subset.txt')
-        species = ('C3H8', 'Air')
-        testing_data = thermoinp.create_subset(species, exact=True)
+        species = (x + '$' for x in ('C3H8', 'Air'))
+        testing_data = self.db.subset(species).format()
         self.assertEqual(testing_data, correct_data)
 
 # --------------------------------------------------------------------
@@ -111,10 +172,7 @@ test_gas = Species(
     h_formation=0.000,
     h_assigned=None,
     T_reference=None,
-    intervals=[_Interval((200, 1000),
-                         7,
-                         (-2, -1, 0, 1, 2, 3, 4, 0),
-                         8468.102,
+    intervals=(poly.NASAPoly((200, 1000),
                          ( 4.078323210e+04,
                           -8.009186040e+02,
                            8.214702010e+00,
@@ -126,11 +184,11 @@ test_gas = Species(
                          ( 2.682484665e+03,
                           -3.043788844e+01,
                           ),
-                         ),
-               _Interval((1000, 6000),
                          7,
                          (-2, -1, 0, 1, 2, 3, 4, 0),
                          8468.102,
+                         ),
+               poly.NASAPoly((1000, 6000),
                          ( 5.608128010e+05,
                           -8.371504740e+02,
                            2.975364532e+00,
@@ -141,12 +199,12 @@ test_gas = Species(
                           ),
                          ( 5.339824410e+03,
                           -2.202774769e+00,
-                          )
-                         ),
-               _Interval((6000.0,  20000.0),
+                          ),
                          7,
                          (-2, -1, 0, 1, 2, 3, 4, 0),
                          8468.102,
+                         ),
+               poly.NASAPoly((6000.0,  20000.0),
                          ( 4.966884120e+08,
                           -3.147547149e+05,
                            7.984121880e+01,
@@ -157,9 +215,12 @@ test_gas = Species(
                            ),
                          ( 2.488433516e+06,
                           -6.695728110e+02,
-                          )
+                          ),
+                         7,
+                         (-2, -1, 0, 1, 2, 3, 4, 0),
+                         8468.102,
                          )
-                        ],
+                        ),
     )
 
 test_condensed = Species(
@@ -173,10 +234,7 @@ test_condensed = Species(
     h_formation=0.000,
     h_assigned=None,
     T_reference=None,
-    intervals=[_Interval((200.0, 1235.080),
-                         7,
-                         (-2, -1, 0, 1, 2, 3, 4, 0),
-                         5745.000,
+    intervals=(poly.NASAPoly((200.0, 1235.080),
                          (-7.099236470e+04,
                            7.254788020e+02,
                            1.066518380e-01,
@@ -188,8 +246,11 @@ test_condensed = Species(
                          (-4.614014260e+03,
                            5.074216040e+00,
                           ),
+                         7,
+                         (-2, -1, 0, 1, 2, 3, 4, 0),
+                         5745.000,
                          ),  # end interval 1
-                 ], # end intervals
+                 ), # end intervals
     )
 
 test_reactant = Species(
@@ -204,10 +265,7 @@ test_reactant = Species(
     h_formation=-86855.900,
     h_assigned=None,
     T_reference=None,
-    intervals=[_Interval((200.0, 1000.0),
-                         7,
-                         (-2, -1, 0, 1, 2, 3, 4, 0),
-                         22997.434,
+    intervals=(poly.NASAPoly((200.0, 1000.0),
                          (-7.310769440e+05,
                            1.521764245e+04,
                           -1.139312644e+02,
@@ -218,12 +276,12 @@ test_reactant = Species(
                           ),
                          (-8.067482120e+04,
                            6.320148610e+02,
-                           )
-                         ),  # end interval 1
-               _Interval((1000.0, 6000.0),
+                           ),
                          7,
                          (-2, -1, 0, 1, 2, 3, 4, 0),
                          22997.434,
+                         ),  # end interval 1
+               poly.NASAPoly((1000.0, 6000.0),
                          ( 1.220329594e+07,
                           -5.794846240e+04,
                            1.092281156e+02,
@@ -231,14 +289,17 @@ test_reactant = Species(
                            2.034992622e-06,
                           -2.052060369e-10,
                            8.575760210e-15,
-                           ),             
+                           ),
                          ( 3.257334050e+05,
                           -7.092350760e+02,
                            ),
+                         7,
+                         (-2, -1, 0, 1, 2, 3, 4, 0),
+                         22997.434,
                          ),  # end interval 2
-               ],		  # end Intervals
+               ),		  # end Intervals
     ) # end Species
-                    
+
 
 test_sp_reactant = Species(
     name='RP-1',

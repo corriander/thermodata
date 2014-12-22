@@ -53,10 +53,24 @@ import thermodata.constants as constants
 import thermodata.thermoinp as thermoinp
 
 
-Interval = collections.namedtuple('Interval',
+_Interval = collections.namedtuple('Interval',
                                   ['bounds',
                                   'coeffs',
                                   'integration_consts'])
+
+class Interval(_Interval):
+
+    def _cp_nodim(self, T):
+        # Return dimensionles heat capacity for temperature
+        return _dimless_heat_capacity(T, self.coeffs)
+
+    def cp_mol(self, T):
+        """Return heat capacity at const. pressure, cpm [J/(kmol K)].
+
+        Heat capacity is a function of temperature for thermally
+        perfect gases.
+        """
+        return self._cp_nodim(T) * constants.R_CEA
 
 
 class ChemDB(dict):
@@ -216,6 +230,13 @@ class Species(object):
         else:
             self.thermo = None
 
+    def eval_cpmol(self, T):
+        """Return molar heat capacity at const. pressure [J/(kmol K)].
+
+        Uses the NASA polynomials; TPG-compatible.
+        """
+        return self.thermo.eval_cpmol(T)
+
     def toxml(self, parent):
         """Create an XML representation of the thermodynamic model"""
         attributes = {'name' : self.name}
@@ -365,6 +386,17 @@ class Thermo(object):
     def s(self):
         """Specific entropy, J/kg-K"""
         return self._s
+
+
+    # ----------------------------------------------------------------
+    # External methods
+    # ----------------------------------------------------------------
+    def eval_cpmol(self, T):
+        for interval in self.intervals:
+            if T <= interval.bounds[1]:
+                return interval.cp_mol(T)
+
+        raise ValueError("Temperature exceeds data range.")
 
     def _select_interval(self, T):
         # Select the appropriate interval for the current temperature
