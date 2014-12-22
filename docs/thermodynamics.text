@@ -1,0 +1,537 @@
+Background Theory and its Application
+=====================================
+
+The database provides coefficients for use in standard-state functions
+of temperature. This document details the basic underlying theory and
+therefore provides means for both documenting implementation and
+facilitating testing/validation.
+
+Compositional Properties
+------------------------
+
+A chemical species is a substance of known composition. In other
+words, it has a quantity of known constituent elements resulting in a
+set of known distinct properties. The following sections detail some
+of these.
+
+### Relative atomic mass
+
+Every element has a known relative atomic mass, $A_r$, which is
+defined as
+
+> ...a dimensionless physical quantity, the ratio of the average mass 
+> of atoms (from a single given sample or source) to 1/12 the mass of
+> an atom of carbon-12 -- [Wikipedia][Wiki-Ar]
+
+In practice, many relative atomic masses are actually known as ranges
+due to the existence of varying [isotopic composition][Wiki-Isotope].
+This means $A_r$ is an *average* value and carries a degree of
+uncertainty. However, this is not a significant issue for these
+purposes so it can be assumed that $A_r$ is a defined, constant value.
+
+### Molar mass
+
+For a given species (the definition above allows a species to be an
+element, compound or even a mixture), the *relative* molar mass $M_r$
+can be evaluated as the weighted product of the $A_r$ for each
+constituent element and the number of atoms present in the molecule.
+For example, the species propane has the chemical composition
+$\text{C}_3\text{H}_8$ and $M_r$ can be evaluated:
+
+$$ M_{r,\text{C}_3\text{H}_8} = 3 A_{r, \text{C}} + 8 A_{r,
+\text{H}}$$
+
+As $A_r$ is dimensionless, so is $M_r$. In order to obtain a
+dimensional molar mass, $M$, the molar mass constant, $M_\text{u}$ is
+invoked:
+
+$$M_\text{u} = 1 \times 10^{-3} \frac{\text{kg}}{\text{mol}}$$
+
+$$M = M_r M_\text{u} \frac{\text{kg}}{\text{mol}}$$
+
+Now, we have the means to evaluate this property for a species of
+known composition like $\text{C}_3\text{H}_8$. Although this is useful
+background information, we don't actually need this as the database
+provides a "molecular weight" field for each species. The "molecular
+weight" is an ambiguous historical term for molar mass, or even
+relative molar mass. Where this quantity is employed in calculations,
+it will be treated as the dimensionless relative molar mass, $M_r$ for
+semantic reasons; note the units are the only altered component, the
+magnitude is identical.
+
+As an aside, the database provides a "formula" listing the constituent
+species and their quantities in a particular species. This, with
+reference to a database of chemical elements, would allow derivation
+of a *similar* relative molar mass/molecular weight value. In order to
+precisely calculate the database molecular weight values, advantage
+would need to be taken of the denoted reference species (such as
+$\text{H}$ and $\text{C}$) and their respective molecular weights.
+
+### Gas constant
+
+For perfect gases (or substances that may behave as perfect gases
+under certain conditions), we can define the specific gas constant,
+$R$, from the molar gas constant, $R_\text{u}$. Note that the specific
+gas constant is not actually necessary/useful if we're dealing in
+amounts-of-substance rather than mass. The database-canonical
+definition of the molar gas constant is:
+
+$$R_\text{u} = 8.1314510 \frac{\text{J}}{\text{mol K}}$$
+
+This differs from the currently accepted (CODATA recommended) value,
+but is necessary if we want to accurately reconstruct the empirically
+determined properties from their dimensionless forms.
+
+$$R = \frac{R_\text{u}}{M} \frac{\text{J}}{\text{kg K}}$$
+
+The gas constant is a quantity derivable solely from chemical
+composition.
+
+### Standard enthalpy of formation
+
+The standard enthalpy of formation, $\Delta H^\circ_f$ is provided as
+another composition-dependent quantity in units of
+$\text{J}/\text{mol-K}$. Like the molar mass, this can
+also be evaluated independently from the database value but it isn't
+necessary.
+
+State functions
+---------------
+
+Certain properties of a substance are functions of thermodynamic
+state. If thermodynamic equilibrium is assumed, the state can be
+evaluated from two independent state functions (e.g. pressure, $P$ and
+temperature, $T$). The coefficients provided by the database define
+three state functions: heat capacity at constant pressure,
+$C^\circ_p$, enthalpy, $H^\circ$ and entropy $S^\circ$. Note that the
+superscript denotes that these quantities are *standard-state*
+functions of temperature (i.e. pressure is a known reference value, so
+only temperature is required to evaluate state functions).
+
+These state functions are defined in dimensionless form.
+
+### Heat capacity
+
+The heat capacity of a substance can be defined as
+
+$$c_p = \left( \frac{\partial{h}}{\partial{T}} \right)_p$$
+
+which is the change in enthalpy with temperature at constant pressure.
+There is another oft-used definition,
+
+$$c_v = \left( \frac{\partial{u}}{\partial{T}} \right)_v$$
+
+which is the heat capacity of a substance at constant volume,
+interpretable as the change in internal energy with temperature at
+constant volume. As it happens, the former constant pressure
+definition often proves to be more directly useful in engineering
+applications and the database provides this form. The two are related
+by 
+
+$$c_p = c_v + R$$
+
+and we can introduce the *ratio of specific heats*, $\gamma$ as
+
+$$\gamma = \frac{c_p}{c_v}$$
+
+Background aside, the database provides the components necessary to
+construct the heat capacity function, given here in dimensionless
+form.
+
+$$\frac{C^\circ_p(T)}{R_\text{u}} = a_1 T^{-2} + a_2 T^{-1} + a_3 + a_4 T + a_5
+T^{2} + a_6 T^{3} + a_7 T^{4}$$  
+
+This form is useful in that it allows direct evaluation of the heat
+capacity quantity in either the amount-of-substance (molar) or mass
+(specific) based forms.
+
+$$C_p = \frac{C^\circ_p(T)}{R_\text{u}} R_\text{u} \frac{\text{J}}{\text{mol K}}$$
+
+$$c_p = \frac{C^\circ_p(T)}{R_\text{u}} R \frac{\text{J}}{\text{kg K}}$$
+
+where $\mathbf{a} = [a_1, a_2 \ldots a_7]$ is the set of species coefficients
+provided by the database. Note that for a perfect gas, the heat
+capacity is dependent on temperature only, so the standard-state
+superscript is dropped (as non-standard-state pressure will not
+significantly affect the quantity).
+
+### Enthalpy
+
+The change in enthalpy of a gas can be expressed as
+
+$$\Delta h = h_2 - h_1 = \int_{1}^{2}{c_p(T)} dT \frac{\text{J}}{\text{kg}}$$
+
+Provided a reference state, we can calculate this enthalpy change. The
+database provides the components necessary to construct this integral
+function of heat capacity.
+
+$$\frac{H^\circ(T)}{RT} = - a_1 T^{-2} + a_2 \ln(T) T^{-1}
++ a_3 + \frac{a_4}{2} T + \frac{a_5}{3} T^{2} + \frac{a_6}{4} T^{3} +
+\frac{a_7}{5} T^{4} + b_1 T^{-1}$$  
+
+where $\mathbf{a} = [a_1, a_2 \ldots a_7]$ is the set of species coefficients
+and $\mathbf{b} = [b_1, b_2]$ is the set of integration constants. Noting again
+that this is the dimensionless form, we can evaluate enthalpy in
+either amount-of-substance or mass based units with an appropriate
+choice of gas constant:
+
+$$H = \frac{H^\circ(T)}{R_\text{u} T} R_\text{u} T + H_\text{ref} \frac{\text{J}}{\text{mol}}$$
+
+$$h = \frac{H^\circ(T)}{R_\text{u} T} R T + h_\text{ref} \frac{\text{J}}{\text{kg}}$$
+
+Again, the standard-state superscript can be dropped as enthalpy is
+also a function of temperature only for a perfect gas.
+
+
+### Entropy
+
+The change in entropy of a perfect gas can be expressed as
+
+$$\Delta s = s_2 - s_1 = \int_{1}^{2}{c_p(T)} \frac{dT}{T} - R \ln{\frac{p_2}{p_1}} \frac{\text{J}}{\text{kg K}}$$
+
+Provided a reference state, we can calculate this entropy change. The
+database provides the components necessary to construct this integral
+function of heat capacity.
+
+$$\frac{S^\circ(T)}{R} = - \frac{a_1}{2} T^{-2} - a_2 T^{-1} + a_3
+\ln(T) + a_4 T + \frac{a_5}{2} T^{2} + \frac{a_6}{3} T^{3} +
+\frac{a_7}{4} T^{4} + b_2$$
+
+where $\mathbf{a} = [a_1, a_2 \ldots a_7]$ is the set of species coefficients
+and $\mathbf{b} = [b_1, b_2]$ is the set of integration constants. Noting again
+that this is the dimensionless form, we can evaluate the integral in
+either amount-of-substance or mass based units with an appropriate
+choice of gas constant:
+
+$$S^\circ = \frac{S^\circ(T)}{R_\text{u}} R_\text{u}
+\frac{\text{J}}{\text{mol K}}$$
+
+$$s^\circ = \frac{S^\circ(T)}{R_\text{u}} R \frac{\text{J}}{\text{kg K}}$$
+
+Unlike in the case of heat capacity and enthalpy, we *cannot* drop the
+standard-state superscript here as the definition of entropy above
+includes a consideration of pressure. Therefore in order to determine
+non-standard-state entropy we need to extend this calculation:
+
+$$\Delta s = s_2 - s_1 = s^\circ_2 - s^\circ_1 - R \ln
+{\frac{p_2}{p_1}} \frac{\text{J}}{\text{kg K}}$$
+
+Implementation
+--------------
+
+This implementation is based on several combinatory principles:
+
+  - "Functional first" approach. Only incorporate state and
+	object-oriented principles if it has a tangible and clear benefit.
+  - Evolving design, starting with a [KISS][Wiki-KISS] approach and
+    refactoring/extending when necessary.
+  - In order to facilitate (2), it's paradoxically beneficial to adopt
+    a modular framework amenable to simple extension. Basically
+	there's a balance here.
+
+### State functions
+
+With the implementation governing principles in mind, the following
+functions are an implementation of the dimensionless *standard-state*
+state functions, $C^\circ_p / R$, $H^\circ / R T$ and $S^\circ / R$:
+
+
+	def _dimless_heat_capacity(T, a):
+		# Returns the dimensionless standard-state heat capacity, Cp/R
+		# T : Temperature, K
+		# a : coefficients, len(a) == 7
+		return (  a[0] / T**2 
+		        + a[1] / T
+		        + a[2]
+		        + a[3] * T
+		        + a[4] * T**2
+		        + a[5] * T**3
+		        + a[6] * T**4
+		        ) 
+	
+	
+	def _dimless_enthalpy(T, a, b):
+		# Returns the dimensionless standard-state enthalpy, H/RT
+		# T : Temperature, K
+		# a : coefficients, len(a) == 7
+		# b : integration constant
+		return (- a[0] / T**2
+		        + (a[1] * log(T) + b) / T
+		        + a[2]
+		        + a[3] * T / 2.0 
+		        + a[4] * T**2 / 3.0 
+		        + a[5] * T**3 / 4.0 
+		        + a[6] * T**4 / 5.0
+		        )
+	
+	
+	def _dimless_entropy(T, a, b):
+		# Returns the dimensionless standard-state entropy, S/R
+		# T : Temperature, K
+		# a : coefficients, len(a) == 7
+		# b : integration constant
+		return (- a[0] / T**2 / 2.0 
+		        - a[1] / T 
+		        + (a[2] * log(T) + b)
+		        + a[3] * T
+		        + a[4] * T**2 / 2.0 
+		        + a[5] * T**3 / 3.0 
+		        + a[6] * T**4 / 4.0
+		        )
+
+These are arguably implementations in the sense they don't employ any
+algorithms to solve the polynomial-like state functions. [Horner's
+method][Wiki-Horner] could be employed for efficient polynomial
+evaluation (with some refactoring of the source forms) but this adds
+complexity for dubious benefit (the advantages of this algorithm
+become significant when applied to high-order polynomials). *If* this
+offers a significant performance benefit in this case it could be
+considered as an alternative implementation later.
+
+Almost immediately the issue of how to handle units or, more
+generally, physical quantities presents itself. Which form are we
+interested in? Whilst we could just stick with one it actually depends 
+and we really don't need to commit in this way if a sensible
+strategy is adopted.
+
+Broadly speaking, physical quantities can be handled explicitly or
+implicitly.
+
+1.  Units could be explicitly represented by the code
+    structure; either:
+	a.  Decide on units and stick with them. The code only handles
+	    defined units for a given physical quantity. This is really
+		the simplest method but it suffers from inflexibility.
+	b.  Present a manner by which units for a given variable or
+	    function are defined. For example, an object might have two
+		representations of heat capacity, one in mass units and one in
+		moles (e.g. `Cp` and `cp` attributes).
+2.  The same code could be applied to calculations involving different
+    units.
+	a.  A switch or flag could be set defining which units to use.
+	    This is an extension on the explicit invariant units option.
+		It adds flexibility at the expense of clarity (extra effort is
+		required to ensure that the units are made clear).
+	b.  A units/physical quantities package/library could be employed
+	    to handle units implicitly. This is the ideal, but it adds
+		both dependencies and overheads to the program.
+
+Option 1b has been adopted here with the knowledge that this is simply
+refactored into 2a, which in turn is simply refactored into 2b if it's
+later deemed to be beneficial.
+
+	
+	# ----------------------------------------------------------------
+	# Molar state functions
+	# ----------------------------------------------------------------
+
+	def _molar_heat_capacity(T, a):
+		# Returns the standard-state molar heat capacity, Cp [J/mol-K]
+		# T : Temperature, K
+		# a : coefficients, len(a) == 7
+		return _dimless_heat_capacity(T, a) * CONST.R_CEA 
+
+	def _molar_enthalpy(T, a, b):
+		# Returns the standard-state molar enthalpy, H [J/mol]
+		# T : Temperature, K
+		# a : coefficients, len(a) == 7
+		# b : integration constant
+		return _dimless_enthalpy(T, a, b) * CONST.R_CEA * T
+
+	def _molar_entropy(T, a, b):
+		# Returns the standard-state molar entropy, S [J/mol-K]
+		# T : Temperature, K
+		# a : coefficients, len(a) == 7
+		# b : integration constant
+		return _dimless_entropy(T, a, b) * CONST.R_CEA
+	
+	
+	# ----------------------------------------------------------------
+	# Specific (mass) state functions
+	# ----------------------------------------------------------------
+
+	def _specific_heat_capacity(T, a, R):
+		# Returns the standard-state spec. heat capacity, cp [J/kg-K]
+		# T : Temperature, K
+		# a : coefficients, len(a) == 7
+		# R : Specific gas constant, J/kg-K
+		return _dimless_heat_capacity(T, a) * R 
+
+	def _specific_enthalpy(T, a, b, R):
+		# Returns the standard-state specific enthalpy, h [J/kg]
+		# T : Temperature, K
+		# a : coefficients, len(a) == 7
+		# b : integration constant
+		# R : Specific gas constant, J/kg-K
+		return _dimless_enthalpy(T, a, b) * R * T
+
+	def _specific_entropy(T, a, b, R):
+		# Returns the standard-state specific entropy, s [J/kg-K]
+		# T : Temperature, K
+		# a : coefficients, len(a) == 7
+		# b : integration constant
+		# R : Specific gas constant, J/kg-K
+		return _dimless_entropy(T, a, b) * R
+
+### Compositional properties
+
+The compositional properties $M$ and $R$ are determined simply:
+
+	def _molar_mass(Mr):
+		# Returns the molar mass, M [kg/mol]
+		# Mr : Relative molar mass, dimensionless
+		return Mr * CONST.M
+	
+	def _specific_gas_constant(M):
+		# Returns the specific gas constant, R [J/kg-K]
+		# M : Molar mass, kg/mol
+		return CONST.R_CEA / M
+
+### Species representation
+
+A chemical species can be represented using a minimal number of
+attributes
+
+
+	class Species(object):
+		"""Chemical species.
+		
+		A chemical species is a substance of known composition in a
+		defined phase and, if an ion, with a specified charge.
+		
+		Species can be instantiated directly, but is generally
+		instantiated in the database loading during the instantiation of
+		ChemDB.
+		
+		"""
+		def __init__(self, name, rel_molar_mass, formation_enthalpy,
+					 intervals=None):
+			self.name = name
+			self.Mr = rel_molar_mass
+			self.Hf = formation_enthalpy
+				
+			# Derived attributes:
+			self.M = CONST.M * self.Mr
+			self._calculate_specific_gas_constant()
+			try:
+				self.hf = self.Hf / self.M
+			except TypeError:
+				# formation enthalpy undefined in source Species
+				self.hf = None
+			
+			# Attach thermodynamic property model
+			if intervals:
+				self.thermo = Thermo(self, intervals)
+			else:
+				self.thermo = None  
+
+
+### Thermodynamic state model
+
+The state functions can be wrapped in a stateful object which
+conveniently allows a tidy conceptual representation of thermodynamic
+state:
+
+	class Thermo(object):
+		"""Thermodynamic state functions (standard-state, P=100 kPa).
+		
+		Temperature, T, is used as the state variable here. On setting the
+		temperature property state functions are evaluated and stored in
+		properties for direct access. In the event no intervals are provided, this
+		evaluation process does not happen (the necessary data is not
+		available).
+	
+		The following properties are available for standard-state
+		conditions (specified temperature and standard pressure, 
+		P =	100 kPa):
+	
+		  - T      : Temperature
+		  - Cp, cp : Standard-state heat capacity at constant pressure 
+		  - H, h   : Standard-state enthalpy
+		  - S, s   : Standard-state entropy
+	
+		Note that upper-case and lower-case properties are in units of
+		amount-of-substance (/mol) and mass (/kg) respectively.
+		
+		Like Species, Thermo can be instantiated directly but is generally
+		handled during the ChemDB database loading.
+			
+		"""
+		def __init__(self, species, intervals, T=298.15):
+			self.species = species
+			self.intervals = intervals
+			self.bounds = intervals[0].bounds[0], intervals[-1].bounds[1]
+			self.T = T
+		
+		@property
+		def T(self):
+			"""Temperature, K"""
+			return self._T
+		@T.setter
+		def T(self, T):
+			self._T = T
+			self._select_interval(T)
+				
+			# Localise variables for repeated access
+			Ru = CONST.R_CEA
+			R = self.species.R
+			if self.interval:
+				a = self.interval.coeffs
+				b1, b2 = self.interval.integration_consts
+	
+				# Calculate dimensionless values
+				Cp_nodim = _dimless_heat_capacity(T, a)
+				H_nodim = _dimless_enthalpy(T, a, b1)
+				S_nodim = _dimless_entropy(T, a, b2)
+	
+				# Assign properties
+				self._Cp = Cp_nodim * Ru
+				self._cp = Cp_nodim * R
+				self._H = H_nodim * Ru * T
+				self._h = H_nodim * R * T
+				self._S = S_nodim * Ru
+				self._s = S_nodim * R
+	
+	
+		# Heat capacity properties
+		# ----------------------------------------------------------------
+		@property
+		def Cp(self):
+			"""Molar heat capacity at constant pressure, J/mol-K."""
+			return self._Cp
+	
+		@property
+		def cp(self):
+			"""Specific heat capacity at constant pressure, J/kg-K."""
+			return self._cp
+	
+		# Enthalpy properties
+		# ----------------------------------------------------------------
+		@property
+		def H(self):
+			"""Molar enthalpy, J/mol"""
+			return self._H
+	
+		@property
+		def h(self):
+			"""Specific enthalpy, J/kg"""
+			return self._h
+	
+		# Entropy properties
+		# ----------------------------------------------------------------
+		@property
+		def S(self):
+			"""Molar entropy, J/mol-K"""
+			return self._S
+	
+		@property
+		def s(self):
+			"""Specific entropy, J/kg-K"""
+			return self._s
+			self._tabulate()
+	
+
+[Wiki-Ar]: https://en.wikipedia.org/wiki/Relative_atomic_mass
+[Wiki-Isotope]: https://en.wikipedia.org/wiki/Isotopes
+[Wiki-KISS]: https://en.wikipedia.org/wiki/KISS_principle
+[Wiki-Horner]: https://en.wikipedia.org/wiki/Horner's_method
