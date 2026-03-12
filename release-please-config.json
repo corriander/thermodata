@@ -2,7 +2,8 @@
   "packages": {
     ".": {
       "release-type": "simple",
-      "package-name": "thermodata"
+      "package-name": "thermodata",
+      "include-component-in-tag": false
     }
   }
 }
