@@ -157,7 +157,7 @@ class DB(object):
 
             >>> len(db.lookup('Jet-A(g)'))
             1
-            >>> len(db.lookup('Jet-A\(g\)'))
+            >>> len(db.lookup(r'Jet-A\\(g\\)'))
             0
 
         Batteries aren't included for filtering by category, but it's
@@ -168,7 +168,7 @@ class DB(object):
             >>> [s.name for s in db.lookup('.*H2') if s in db.reactant]
             ['(CH2)x(cr)', 'C2H2(L),acetyle', 'C6H5NH2(L)', 'H2(L)', 'H2O2(L)']
         """
-        string = string.replace('(','\(').replace(')','\)')
+        string = string.replace('(', r'\(').replace(')', r'\)')
         lst = []
         for name, obj in self._dict.items():
             if re.match(string, name):
@@ -361,7 +361,7 @@ def _read_categories():
     # Reactants begin with 'Air'
     # We can catch all three categories in one go with a regex:
     pattern = re.compile(r'\n(e-.*)'
-                          '\n(Ag\(cr\).*)'
+                          r'\n(Ag\(cr\).*)'
                           '\nEND PRODUCTS.*'
                           '\n(Air.*)'
                           '\nEND REACTANTS', re.DOTALL)

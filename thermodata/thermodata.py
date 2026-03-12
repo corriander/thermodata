@@ -123,11 +123,9 @@ class ChemDB(dict):
     def _thermoinp_load(self):
         # Database loader. Loads the contents of `thermo.inp` into a
         # flat dictionary.
-        categ_dict = thermoinp.parse()
-        self._source_dict = {species.name:self._map_species(species)
-                             for species_list in categ_dict.values()
-                             for species in species_list
-                             }
+        db = thermoinp.DB()
+        self._source_dict = {species.name: self._map_species(species)
+                             for species in db.all}
 
     def toxml(self):
         """Represent database contents in XML form."""
